@@ -1,9 +1,6 @@
 from nba_api.stats.endpoints import leagueleaders
 import pandas as pd
 
-from nba_api.stats.endpoints import playercareerstats
-
-
 # Take the first name and last name of the player
 # def get_player_id_for_name(firstname, lastname):
 
@@ -23,13 +20,6 @@ try:
     # Find the player ID for the given player name
     player_df = top_500_avg[['PLAYER', 'PLAYER_ID']]
     player_id = player_df[player_df['PLAYER'] == player_name]['PLAYER_ID'].iloc[0]
-
-    # Fetching career statistics for Player of Choice using his player ID
-    player_career = playercareerstats.PlayerCareerStats(player_id='202681')
-    player_career_df = player_career.get_data_frames()[0]
-    # Extracting the seasons of player of choice
-    seasons_played = player_career_df['SEASON_ID'].unique()
-    print(seasons_played.tolist())
 
     # Create a DataFrame for the player with only player name and player id
     player_data = pd.DataFrame({'Player Name': [player_name], 'Player ID': [player_id]})
