@@ -26,6 +26,7 @@ def get_team_season_stats(self, year):
     )
 
     df_season = regular_season_team_stats.get_data_frames()[0]
+
     return df_season.to_dict()
 
 
@@ -53,3 +54,6 @@ def get_team_playoff_stats(self, year):
 
     df_season = playoff_season_team_stats.get_data_frames()[0]
     return df_season.to_dict()
+
+
+

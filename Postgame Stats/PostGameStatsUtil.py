@@ -1,11 +1,6 @@
 import json
-
 import pandas as pd
-import requests
-from bs4 import BeautifulSoup
-from nba_api.stats.endpoints import leagueleaders, shotchartdetail
-from sportsipy.ncaab.roster import Player
-from sportsreference.ncaab.teams import Teams
+from nba_api.stats.endpoints import leagueleaders, shotchartdetail, TeamGameLogs, CommonAllPlayers, LeagueLeaders
 
 
 class PostGameStatsUtil:
@@ -51,14 +46,21 @@ class PostGameStatsUtil:
         filtered_data = nba_shot_data1[['LOC_X', 'LOC_Y']].to_dict()
         return filtered_data
 
-    def get_cbb_player_id(self):
 
-        try:
-            player = Player(self)
-            return player.player_id
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            return None
+    def get_wnba_player_id(self):
+        common_all_players = CommonAllPlayers(
+            is_only_current_season=0,  # 1 active, 0 not active
+            league_id='10',  # nba 00, g_league 20, wnba 10
+            season='2023-24'  # change year(s) if needed
+        )
 
-
+        df_common_players = common_all_players.get_data_frames()[0]
+        df_player_names = df_common_players['DISPLAY_FIRST_LAST']
+        # Loop through the data frame of players and search for the requested player name
+        player_id = ''
+        for player in df_player_names:
+            if player == self:
+                player_info = df_common_players[df_common_players['DISPLAY_FIRST_LAST'] == player]
+                person_id = player_info['PERSON_ID'].iloc[0]
+                return person_id
 
