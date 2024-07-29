@@ -1,2 +1,4 @@
 # Postgame-Stats-Api
-REST API for nba stats. Built using flask.
+Python FLASK REST API for sports statistics. This application offers stats for NBA, WNBA, NFL, CBB. 
+
+
