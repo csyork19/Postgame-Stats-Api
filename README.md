@@ -2,12 +2,15 @@
 Python FLASK REST API for sports statistics. This application offers stats for NBA. Coming soon are stats for WNBA, NFL, CBB Men & Women. 
 
 # Sample Requests
+The endpoints can be invoked with an application such as postman, cli tool, front end application etc.
 ## Player Season Stats
+```
 curl -X POST http://localhost:5000/api/nba/player/seasonStats \
 -H "Content-Type: application/json" \
 -d '{
   "playerName": "LeBron James"
 }'
+```
 
 ## Player Career Stats
 ```
