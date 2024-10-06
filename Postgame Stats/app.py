@@ -4,6 +4,8 @@ from nba_api.stats.endpoints import PlayerGameLogs
 import NbaPlayerStats
 import TeamStats
 import WnbaPlayerStats
+import GleaguePlayerStats
+import NcaaBasketballStats
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -68,32 +70,17 @@ def get_wnba_player_season_stats():
         season = request.get_json('season')
         return WnbaPlayerStats.get_wnba_player_stats(player_name)
 
-@app.route('/api/cbb/player/seasonStats', methods=['POST'])
-def cbb_player_season_stats():
-    player_game_logs = PlayerGameLogs(
-        season_nullable='2022-23',  # change year(s) if needed
-        season_type_nullable='Regular Season'  # Regular Season, Playoffs, Pre Season
-    )
-    return player_game_logs
-
-
-@app.route('/api/cbb/player/careerStats')
-def cbb_player_career_stats():
+@app.route('/api/gleague/player/seasonStats', methods=['POST'])
+def get_gleague_player_season_stats():
     if request.is_json:
-        return "test"
+        data = request.get_json()
+        player_name = data.get('playerName')
+        season = request.get_json('season')
+        return GleaguePlayerStats.get_gleague_player_stats(player_name)
 
-
-@app.route('/api/cbb/player/conferenceTournamentStats')
-def cbb_player_conf_tourn_stats():
-    if request.is_json:
-        return "test"
-
-
-@app.route('/api/cbb/player/marchMadnessStats')
-def cbb_player_march_madness_stats():
-    if request.is_json:
-        return "test"
-
+@app.route('/api/cbb/team/seasonStats', methods=['POST'])
+def get_mens_cbb_team_seasonStats():
+    return NcaaBasketballStats.get_cbb_stats()
 
 if __name__ == '__main__':
     app.run()

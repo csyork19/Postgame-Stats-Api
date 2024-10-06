@@ -3,6 +3,7 @@ import pandas as pd
 from nba_api.stats.endpoints import leagueleaders, shotchartdetail, TeamGameLogs, CommonAllPlayers, LeagueLeaders
 
 
+
 class PostGameStatsUtil:
     def get_player_id(self):
         top_500 = leagueleaders.LeagueLeaders(
@@ -64,3 +65,20 @@ class PostGameStatsUtil:
                 person_id = player_info['PERSON_ID'].iloc[0]
                 return person_id
 
+
+    def get_gleague_player_id(self):
+        common_all_players = CommonAllPlayers(
+            is_only_current_season=0,  # 1 active, 0 not active
+            league_id='10',  # nba 00, g_league 20, wnba 10
+            season='2023-24'  # change year(s) if needed
+        )
+
+        df_common_players = common_all_players.get_data_frames()[0]
+        df_player_names = df_common_players['DISPLAY_FIRST_LAST']
+        # Loop through the data frame of players and search for the requested player name
+        player_id = ''
+        for player in df_player_names:
+            if player == self:
+                player_info = df_common_players[df_common_players['DISPLAY_FIRST_LAST'] == player]
+                person_id = player_info['PERSON_ID'].iloc[0]
+                return person_id
