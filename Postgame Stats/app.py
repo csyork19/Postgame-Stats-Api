@@ -61,26 +61,5 @@ def team_playoff_stats():
         season = request.get_json()['season']
         return TeamStats.get_team_playoff_stats(team_name, season)
 
-
-@app.route('/api/wnba/player/seasonStats', methods=['POST'])
-def get_wnba_player_season_stats():
-    if request.is_json:
-        data = request.get_json()
-        player_name = data.get('playerName')
-        season = request.get_json('season')
-        return WnbaPlayerStats.get_wnba_player_stats(player_name)
-
-@app.route('/api/gleague/player/seasonStats', methods=['POST'])
-def get_gleague_player_season_stats():
-    if request.is_json:
-        data = request.get_json()
-        player_name = data.get('playerName')
-        season = request.get_json('season')
-        return GleaguePlayerStats.get_gleague_player_stats(player_name)
-
-@app.route('/api/cbb/team/seasonStats', methods=['POST'])
-def get_mens_cbb_team_seasonStats():
-    return NcaaBasketballStats.get_cbb_stats()
-
 if __name__ == '__main__':
     app.run()
