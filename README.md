@@ -1,6 +1,8 @@
 # Postgame-Stats-Api
 Python FLASK REST API for sports statistics. This application offers stats for NBA.
 
+If you want to request an API be built out for other NBA stats, please send me a message!
+
 # Sample Requests
 The endpoints can be invoked with an application such as postman, cli tool, front end application etc.
 ## Player Season Stats
