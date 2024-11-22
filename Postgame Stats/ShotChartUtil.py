@@ -1,6 +1,9 @@
 # Data and NBA API
+import os
+
 import pandas as pd
 import numpy as np
+from flask import send_file
 
 from scipy.stats import percentileofscore
 
@@ -21,7 +24,8 @@ from matplotlib.patches import PathPatch
 
 sns.set_style('white')
 sns.set_color_codes()
-
+# Set Matplotlib to use a non-interactive backend
+plt.switch_backend('Agg')
 
 def get_player_shotchartdetail(player_name, season_id):
     """
@@ -166,7 +170,7 @@ def draw_court(ax=None, color="blue", lw=1, shotzone=False, outer_lines=False):
     return ax
 
 
-def shot_chart(data, title="", color="b",
+def shot_chart(data, player_name, year, title="", color="b",
                xlim=(-250, 250), ylim=(422.5, -47.5), line_color="blue",
                court_color="white", court_lw=2, outer_lines=False,
                flip_court=False, gridsize=None,
@@ -181,26 +185,25 @@ def shot_chart(data, title="", color="b",
         ax.set_xlim(xlim[::-1])
         ax.set_ylim(ylim[::-1])
 
-    ax.tick_params(labelbottom="off", labelleft="off")
+    ax.tick_params(labelbottom=False, labelleft=False)
     ax.set_title(title, fontsize=18)
 
-    # draws the court
+    # Draws the court
     draw_court(ax, color=line_color, lw=court_lw, outer_lines=outer_lines)
 
-    # separate color by make or miss
+    # Separate data by make or miss
     x_missed = data[data['EVENT_TYPE'] == 'Missed Shot']['LOC_X']
     y_missed = data[data['EVENT_TYPE'] == 'Missed Shot']['LOC_Y']
 
     x_made = data[data['EVENT_TYPE'] == 'Made Shot']['LOC_X']
     y_made = data[data['EVENT_TYPE'] == 'Made Shot']['LOC_Y']
 
-    # plot missed shots
+    # Plot missed shots
     ax.scatter(x_missed, y_missed, c='r', marker="x", s=300, linewidths=3, **kwargs)
-    # plot made shots
+    # Plot made shots
     ax.scatter(x_made, y_made, facecolors='none', edgecolors='g', marker="o", s=100, linewidths=3, **kwargs)
 
-    # Set the spines to match the rest of court lines, makes outer_lines
-    # somewhate unnecessary
+    # Set spines to match the rest of the court lines
     for spine in ax.spines:
         ax.spines[spine].set_lw(court_lw)
         ax.spines[spine].set_color(line_color)
@@ -211,7 +214,14 @@ def shot_chart(data, title="", color="b",
         ax.spines["right"].set_visible(False)
         ax.spines["left"].set_visible(False)
 
-    return ax
+    # Save the chart dynamically
+    save_directory = 'shotcharts'
+
+    file_name = os.path.join(save_directory, f"{player_name}_{year}_stats.png")
+    plt.savefig(file_name)
+    plt.close()  # Close the figure to release memory
+    return send_file(file_name, mimetype='image/png')
+
 
 
 def sized_hexbin(ax, hc, hc2, cmap, norm):
@@ -261,7 +271,7 @@ def sized_hexbin(ax, hc, hc2, cmap, norm):
     hc2.remove()
 
 
-def hexmap_chart(data, league_avg, title="", color="b",
+def hexmap_chart(data, league_avg, player_name, season , title="", color="b",
                  xlim=(-250, 250), ylim=(422.5, -47.5), line_color="white",
                  court_color="#1a477b", court_lw=2, outer_lines=False,
                  flip_court=False, gridsize=None,
@@ -321,8 +331,14 @@ def hexmap_chart(data, league_avg, title="", color="b",
         ax.spines["bottom"].set_visible(False)
         ax.spines["right"].set_visible(False)
         ax.spines["left"].set_visible(False)
+    # Save the chart dynamically
+    save_directory = 'shotcharts'
 
-    return ax
+    file_name = os.path.join(save_directory, f"{player_name}_{season}_hexmap_chart.png")
+    plt.savefig(file_name)
+    plt.close()  # Close the figure to release memory
+    return send_file(file_name, mimetype='image/png')
+
 
 
 def shot_zones(data, league_avg, title="", color="b",
@@ -380,7 +396,7 @@ def shot_zones(data, league_avg, title="", color="b",
         ax.spines["left"].set_visible(False)
 
 
-def heatmap(data, title="", color="b",
+def heatmap(data, player_name, season, title="", color="b",
             xlim=(-250, 250), ylim=(422.5, -47.5), line_color="white",
             court_color="white", court_lw=2, outer_lines=False,
             flip_court=False, gridsize=None,
@@ -419,24 +435,30 @@ def heatmap(data, title="", color="b",
         ax.spines["bottom"].set_visible(False)
         ax.spines["right"].set_visible(False)
         ax.spines["left"].set_visible(False)
+        # Save the chart dynamically
+    save_directory = 'shotcharts'
 
-    return ax
+    file_name = os.path.join(save_directory, f"{player_name}_{season}heatmap_chart.png")
+    plt.savefig(file_name)
+    plt.close()  # Close the figure to release memory
+    return send_file(file_name, mimetype='image/png')
 
 
 
 
 
 
-player_name = 'Klay Thompson'
-year = '2023-24'
+
+player_name = 'Jonathan Isaac'
+year = '2024-25'
 
 player_shotchart_df, league_avg = get_player_shotchartdetail(player_name, year)
 # Set the size for our plots
 plt.rcParams['figure.figsize'] = (12, 11)
-shot_chart(player_shotchart_df, title=str(player_name))
-plt.show()
-hexmap_chart(player_shotchart_df, league_avg, title=str(player_name) + " Hex Chart " + str(year))
-plt.show()
-shot_zones(player_shotchart_df, league_avg, title=str(player_name) + " Heat Map " + str(year))
-# heatmap(player_shotchart_df)
+# shot_chart(player_shotchart_df, title=str(player_name))
 # plt.show()
+# hexmap_chart(player_shotchart_df, league_avg, title=str(player_name) + " Hex Chart " + str(year))
+# plt.show()
+# shot_zones(player_shotchart_df, league_avg, title=str(player_name) + " Heat Map " + str(year))
+heatmap(player_shotchart_df,player_name,year)
+plt.show()
