@@ -1,64 +1,42 @@
-# Postgame-Stats-Api
-Python FLASK REST API for sports statistics. This application offers stats for NBA.
 
-If you want to request an API be built out for other NBA stats, please send me a message!
+# PostGame Stats API  
 
-# Sample Requests
-The endpoints can be invoked with an application such as postman, cli tool, front end application etc.
-## Player Season Stats
-```
-curl -X POST http://localhost:5000/api/nba/player/seasonStats \
--H "Content-Type: application/json" \
--d '{
-  "playerName": "LeBron James"
-}'
-```
+PostGame Stats is a **Flask-based REST API** that provides free access to comprehensive **NBA statistics**. The API offers detailed player and team data, as well as visualized shot charts, making it an ideal resource for analysts, developers, and basketball enthusiasts looking to integrate NBA stats into their projects.  
 
-## Player Career Stats
-```
-curl -X POST http://localhost:5000/api/nba/player/careerStats \
--H "Content-Type: application/json" \
--d '{
-  "playerName": "Stephen Curry"
-}'
-```
+## Features  
+- **Player Statistics**: Access player performance metrics, including points, rebounds, assists, and more.  
+- **Team Statistics**: Retrieve team-level data such as standings, win-loss records, and advanced stats.  
+- **Shot Charts**: Get shot location data visualized on a court for individual players or teams.  
+- **Free and Accessible**: Open to all users without any subscription or access fees.  
 
-## Player Playoff Stats
-```
-curl -X POST http://localhost:5000/api/nba/player/playoffStats \
--H "Content-Type: application/json" \
--d '{
-  "playerName": "Kawhi Leonard",
-  "season": "2023-24"
-}'
-```
-## Player Shot Chart Coordinates
-```
-curl -X POST http://localhost:5000/api/nba/player/shotChartCoordinates \
--H "Content-Type: application/json" \
--d '{
-  "playerName": "Kevin Durant",
-  "season": "2023-24"
-}'
-```
+## Technology Stack  
+- **Backend**: Python Flask  
+- **API**: RESTful architecture for seamless integration  
+- **Data Processing**: Powered by Pandas for efficient manipulation and analysis  
 
-## Team Season Stats
-```
-curl -X POST http://localhost:5000/api/nba/team/seasonStats \
--H "Content-Type: application/json" \
--d '{
-  "teamName": "Golden State Warriors",
-  "season": "2023-24"
-}'
-```
-## Team Playoff Stats
-```
-curl -X POST http://localhost:5000/api/nba/team/playoffStats \
--H "Content-Type: application/json" \
--d '{
-  "teamName": "Miami Heat",
-  "season": "2022-23"
-}'
-```
+## Usage  
+1. Clone the repository:  
+   ```bash  
+   git clone https://github.com/yourusername/postgame-stats.git  
+   cd postgame-stats  
+   ```  
+2. Install dependencies:  
+   ```bash  
+   pip install -r requirements.txt  
+   ```  
+3. Run the server:  
+   ```bash  
+   flask run  
+   ```  
+4. Access the API at `http://127.0.0.1:5000`.  
 
+## Example Endpoints  
+- **Player Stats**: `/api/nba/player/seasonAverages`  
+- **Team Stats**: `/api/team/seasonStats`  
+- **Team Playoff Ststs**: `/api/team/playoffStats`  
 
+## Contributions  
+Contributions are welcome! Feel free to submit issues or create pull requests to improve the API.  
+
+## License  
+This project is licensed under the MIT License.  
