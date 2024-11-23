@@ -20,14 +20,6 @@ PostGame Stats is a **Flask-based REST API** that provides free access to compre
    git clone https://github.com/yourusername/postgame-stats.git  
    cd postgame-stats  
    ```  
-2. Install dependencies:  
-   ```bash  
-   pip install -r requirements.txt  
-   ```  
-3. Run the server:  
-   ```bash  
-   flask run  
-   ```  
 4. Access the API at `http://127.0.0.1:5000`.  
 
 ## Example Endpoints  
