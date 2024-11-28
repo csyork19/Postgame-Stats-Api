@@ -1,6 +1,5 @@
 import json
 import pandas as pd
-from flask import jsonify
 from nba_api.stats.endpoints import leagueleaders, shotchartdetail, CommonAllPlayers
 
 
