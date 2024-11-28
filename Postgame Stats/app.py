@@ -16,6 +16,18 @@ def player_id():
         player_name = request.get_json()['playerName']
         return NbaPlayerStats.get_player_id(player_name)
 
+@app.route('/api/wnba/player/id', methods=['POST'])
+def wnba_player_id():
+    if request.is_json:
+        player_name = request.get_json()['playerName']
+        return PostGameStatsUtil.PostGameStatsUtil.get_wnba_player_id(player_name)
+
+@app.route('/api/gleague/player/id', methods=['POST'])
+def gleague_player_id():
+    if request.is_json:
+        player_name = request.get_json()['playerName']
+        return PostGameStatsUtil.PostGameStatsUtil.get_gleague_player_id(player_name)
+
 @app.route('/api/nba/player/seasonStats', methods=['POST'])
 def player_season_stats():
     if request.is_json:

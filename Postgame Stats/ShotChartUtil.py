@@ -218,10 +218,9 @@ def shot_chart(data, player_name, year, title="", color="b",
     save_directory = 'shotcharts'
 
     file_name = os.path.join(save_directory, f"{player_name}_{year}_stats.png")
-    plt.savefig(file_name)
+    plt.savefig(file_name, dpi=300)
     plt.close()  # Close the figure to release memory
     return send_file(file_name, mimetype='image/png')
-
 
 
 def sized_hexbin(ax, hc, hc2, cmap, norm):
@@ -271,24 +270,38 @@ def sized_hexbin(ax, hc, hc2, cmap, norm):
     hc2.remove()
 
 
-def hexmap_chart(data, league_avg, player_name, season , title="", color="b",
+def hexmap_chart(data, league_avg, title="", color="b",
                  xlim=(-250, 250), ylim=(422.5, -47.5), line_color="white",
                  court_color="#1a477b", court_lw=2, outer_lines=False,
                  flip_court=False, gridsize=None,
                  ax=None, despine=False, **kwargs):
+    # Compute league averages
     LA = league_avg.loc[:, ['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'FGA', 'FGM']].groupby(
         ['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE']).sum()
     LA['FGP'] = 1.0 * LA['FGM'] / LA['FGA']
+
+    # Compute player shooting data
     player = data.groupby(['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'SHOT_MADE_FLAG']).size().unstack(fill_value=0)
     player['FGP'] = 1.0 * player.loc[:, 1] / player.sum(axis=1)
     player_vs_league = (player.loc[:, 'FGP'] - LA.loc[:, 'FGP']) * 100
 
+    # Merge data and filter invalid values
     data = pd.merge(data, player_vs_league, on=['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE'], how='right')
+    data = data.dropna(subset=['LOC_X', 'LOC_Y'])  # Remove rows with NaN coordinates
 
+    # Filter valid coordinate bounds
+    data = data[(data['LOC_X'] >= -250) & (data['LOC_X'] <= 250) &
+                (data['LOC_Y'] >= -47.5) & (data['LOC_Y'] <= 422.5)]
+
+    if data.empty:
+        raise ValueError("Filtered data is empty. Please check the input data for valid shot coordinates.")
+
+    # Setup axis if not provided
     if ax is None:
-        ax = plt.gca()
+        fig, ax = plt.subplots(figsize=(8, 7))  # Explicitly create new figure and axis
         ax.set_facecolor(court_color)
 
+    # Set axis limits
     if not flip_court:
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
@@ -296,49 +309,75 @@ def hexmap_chart(data, league_avg, player_name, season , title="", color="b",
         ax.set_xlim(xlim[::-1])
         ax.set_ylim(ylim[::-1])
 
-    ax.tick_params(labelbottom="off", labelleft="off")
+    # Debug: Check axis limits
+    print(f"xlim: {ax.get_xlim()}, ylim: {ax.get_ylim()}")
+
+    # Validate axis limits
+    if np.isnan(ax.get_xlim()).any() or np.isnan(ax.get_ylim()).any() or \
+            np.isinf(ax.get_xlim()).any() or np.isinf(ax.get_ylim()).any():
+        raise ValueError(f"Invalid axis limits detected: xlim={ax.get_xlim()}, ylim={ax.get_ylim()}")
+
+    ax.tick_params(labelbottom=False, labelleft=False)
     ax.set_title(title, fontsize=18)
 
-    # draws the court
+    # Draw court
     draw_court(ax, color=line_color, lw=court_lw, outer_lines=outer_lines)
 
+    # Prepare shot data
     x = data['LOC_X']
     y = data['LOC_Y']
 
-    # for diverging color map
+    # Ensure valid coordinates (non-NaN, non-Inf)
+    x_clean = x[~np.isnan(x) & ~np.isinf(x)]
+    y_clean = y[~np.isnan(y) & ~np.isinf(y)]
+
+    # Debug: Check cleaned x and y values
+    print(f"x_clean min: {x_clean.min()}, max: {x_clean.max()}")
+    print(f"y_clean min: {y_clean.min()}, max: {y_clean.max()}")
+
+    if x_clean.empty or y_clean.empty:
+        raise ValueError("No valid shot location data after filtering. Check the input dataset.")
+
+    # Configure colormap and normalization
     colors = ['#2b7cb6', '#abd9e9', '#ffffbf', '#fdaf61', '#d7191c']
     cmap = ListedColormap(colors)
-    # The 5 colors are separated by -9, -3, 0, 3, 9
-    boundaries = [-np.inf, -9, -3, 0, 3, 9, np.inf]
-    norm = BoundaryNorm(boundaries, len(boundaries) - 1, clip=True)
+    boundaries = [-np.inf, -9, -3, 3, 9, np.inf]
+    norm = BoundaryNorm(boundaries, cmap.N, clip=True)
 
+    # Hexbin plots
+    hexbin = ax.hexbin(
+        x_clean, y_clean, gridsize=40, cmap=cmap, norm=norm,
+        extent=[-250, 250, -50, 425]  # Match axis limits exactly
+    )
+    hexbin2 = ax.hexbin(
+        x_clean, y_clean, C=data['FGP'], gridsize=40, cmap=cmap, norm=norm,
+        extent=[-250, 250, -50, 425]
+    )
 
-
-    # first hexbin required for bincount
-    # second hexbin for the coloring of each hexagons
-    hexbin = ax.hexbin(x, y, gridsize=40, cmap=cmap, norm=norm, extent=[-275, 275, -50, 425])
-    hexbin2 = ax.hexbin(x, y, C=data['FGP'], gridsize=40, cmap=cmap, norm=norm, extent=[-275, 275, -50, 425])
-    sized_hexbin(ax, hexbin, hexbin2, cmap, norm)
-
-    # Set the spines to match the rest of court lines, makes outer_lines
-    # somewhate unnecessary
-    for spine in ax.spines:
-        ax.spines[spine].set_lw(court_lw)
-        ax.spines[spine].set_color(line_color)
+    # Adjust spines
+    for spine in ax.spines.values():
+        spine.set_linewidth(court_lw)
+        spine.set_color(line_color)
 
     if despine:
-        ax.spines["top"].set_visible(False)
-        ax.spines["bottom"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-        ax.spines["left"].set_visible(False)
-    # Save the chart dynamically
+        for side in ["top", "bottom", "right", "left"]:
+            ax.spines[side].set_visible(False)
+
+    # Add colorbar
+    cbar = plt.colorbar(hexbin2, ax=ax)
+    cbar.set_label('FGP Difference (%)', fontsize=12)
+    cbar.set_ticks([-100, -50, 0, 50, 100])
+    cbar.ax.tick_params(labelsize=10)
+
+    # Save the figure
     save_directory = 'shotcharts'
-
-    file_name = os.path.join(save_directory, f"{player_name}_{season}_hexmap_chart.png")
-    plt.savefig(file_name)
+    os.makedirs(save_directory, exist_ok=True)
+    file_name = os.path.join(save_directory,
+                             f"{kwargs.get('player_name', 'player')}_{kwargs.get('year', 'unknown')}_hexmap_chart.png")
+    plt.savefig(file_name, dpi=300)
     plt.close()  # Close the figure to release memory
-    return send_file(file_name, mimetype='image/png')
 
+    return ax
 
 
 def shot_zones(data, league_avg, title="", color="b",
@@ -420,7 +459,7 @@ def heatmap(data, player_name, season, title="", color="b",
     x = data['LOC_X']
     y = data['LOC_Y']
 
-    sns.kdeplot(x, y, shade=True, cmap='inferno', ax=ax, **kwargs)
+    sns.kdeplot(x, shade=True, cmap='inferno', ax=ax, **kwargs)
 
     ax.scatter(x, y, facecolors='w', s=2, linewidths=0.1, **kwargs)
 
@@ -449,14 +488,13 @@ def heatmap(data, player_name, season, title="", color="b",
 
 
 
-player_name = 'Jonathan Isaac'
-year = '2024-25'
-
-player_shotchart_df, league_avg = get_player_shotchartdetail(player_name, year)
-# Set the size for our plots
-plt.rcParams['figure.figsize'] = (12, 11)
-# shot_chart(player_shotchart_df, title=str(player_name))
-# plt.show()
+# player_name = 'Devin Booker'
+# year = '2024-25'
+# player_shotchart_df, league_avg = get_player_shotchartdetail(player_name, year)
+# # Set the size for our plots
+# plt.rcParams['figure.figsize'] = (12, 11)
+# # shot_chart(player_shotchart_df, title=str(player_name))
+# # plt.show()
 # hexmap_chart(player_shotchart_df, league_avg, title=str(player_name) + " Hex Chart " + str(year))
 # plt.show()
 # shot_zones(player_shotchart_df, league_avg, title=str(player_name) + " Heat Map " + str(year))
