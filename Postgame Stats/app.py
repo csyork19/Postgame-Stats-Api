@@ -1,6 +1,4 @@
-import os
-
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request
 import NbaPlayerStats
 import TeamStats
 import ShotChartUtil
@@ -202,31 +200,28 @@ def player_regular_season_short_chart():
         season = request.get_json()['season']
 
         try:
-            player_shot_chart_df, league_avg = ShotChartUtil.get_player_shotchartdetail(player_name, season)
-            image_file = ShotChartUtil.shot_chart(player_shot_chart_df, player_name, season, title=str(player_name))
-            file_url = f"http://127.0.0.1:5000/shotcharts/{player_name}_{season}_stats.png"
-            SHOTCHARTS_DIR = os.path.join(os.path.dirname(__file__), 'shotcharts')
-            return send_from_directory(SHOTCHARTS_DIR, f"{player_name}_{season}_stats.png")
+            ShotChartUtil.create_player_season_shot_chart_hexmap_heatmap(player_name, season)
+            return "shot chart creation is successful"
         except Exception as ex:
             return ExceptionHandler.PostGameStatsException(
                 f"Error retrieving NBA Player Regular Season Shot Chart Coordinates for {player_name} during the {season} season.")
 
-
-@app.route('/api/nba/player/regularSeasonHeatmap', methods=['POST'])
-def player_regular_season_heat_map():
-    global player_name, season
-    if request.is_json:
-        try:
-            player_name = request.get_json()['playerName']
-            season = request.get_json()['season']
-            player_shot_chart_df, league_avg = ShotChartUtil.get_player_shotchartdetail(player_name, season)
-            image_file = ShotChartUtil.heatmap(player_shot_chart_df, player_name, season, title=str(player_name))
-            return image_file
-        except Exception as ex:
-            return ExceptionHandler.PostGameStatsException(
-                f"Error retrieving NBA Player Regular Season Heatmao for {player_name} during the {season} season.")
-
-
+#
+# @app.route('/api/nba/player/regularSeasonHeatmap', methods=['POST'])
+# def player_regular_season_heat_map():
+#     global player_name, season
+#     if request.is_json:
+#         try:
+#             player_name = request.get_json()['playerName']
+#             season = request.get_json()['season']
+#             player_shot_chart_df, league_avg = ShotChartUtil.get_player_shotchartdetail(player_name, season)
+#             image_file = ShotChartUtil.heatmap(player_shot_chart_df, player_name, season, title=str(player_name))
+#             return image_file
+#         except Exception as ex:
+#             return ExceptionHandler.PostGameStatsException(
+#                 f"Error retrieving NBA Player Regular Season Heatmao for {player_name} during the {season} season.")
+#
+#
 @app.route('/api/nba/player/regularSeasonHexmap', methods=['POST'])
 def player_regular_season_hex_map():
     global player_name, season
@@ -234,12 +229,7 @@ def player_regular_season_hex_map():
         try:
             player_name = request.get_json()['playerName']
             season = request.get_json()['season']
-            player_shot_chart_df, league_avg = ShotChartUtil.get_player_shotchartdetail(player_name, season)
-            image_file = ShotChartUtil.hexmap_chart(player_shot_chart_df, league_avg, player_name, season,
-                                                    title=str(player_name))
-            file_url = f"http://127.0.0.1:5000/shotcharts/{player_name}_{season}_stats.png"
-            SHOTCHARTS_DIR = os.path.join(os.path.dirname(__file__), 'shotcharts')
-            return send_from_directory(SHOTCHARTS_DIR, f"{player_name}_{season}_hexmap_chart.png")
+            return ShotChartUtil.create_hexmap_per_season(player_name,season)
         except Exception as ex:
             return ExceptionHandler.PostGameStatsException(
                 f"Error retrieving NBA Player Regular Season Hexmap for {player_name} during the {season} season.")

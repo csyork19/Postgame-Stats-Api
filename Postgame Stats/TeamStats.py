@@ -21,7 +21,7 @@ def get_team_season_stats(self, year):
         team_id_nullable=team_id,
         season_nullable=year,
         season_type_nullable='Regular Season'  # Regular Season, Playoffs, Pre Season
-    ).get_data_frames()[0].to_dict()
+    ).get_data_frames()[0].to_dict(orient="records")
 
 
 def get_team_playoff_stats(self, year):
@@ -46,7 +46,7 @@ def get_team_playoff_stats(self, year):
     )
 
 
-    return playoff_season_team_stats.get_data_frames()[0].to_dict()
+    return playoff_season_team_stats.get_data_frames()[0].to_dict(orient="records")
 
 
 
