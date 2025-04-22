@@ -1,14 +1,10 @@
 from io import BytesIO
-
 import pandas as pd
 import requests
 from scipy.stats import percentileofscore
-
-pd.options.display.max_columns = None
 from nba_api.stats.static import players
 from nba_api.stats.endpoints import shotchartdetail
 from nba_api.stats.endpoints import playercareerstats
-import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.patches import Circle, Rectangle, Arc
 from matplotlib.collections import PatchCollection
@@ -16,92 +12,48 @@ from matplotlib.colors import ListedColormap, BoundaryNorm
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 import PostGameStatsUtil
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+import os
+from PIL import Image
+import matplotlib.pyplot as plt
+import numpy as np
 
 sns.set_style('white')
 sns.set_color_codes()
-# Set Matplotlib to use a non-interactive backend
 plt.switch_backend('Agg')
+pd.options.display.max_columns = None
 
 
 def get_player_sper_game_shot_chart(player_name, season_id, game_id):
     nba_players = players.get_players()
     player_dict = [player for player in nba_players if player['full_name'] == player_name][0]
-
-    # career df
     career = playercareerstats.PlayerCareerStats(player_id=player_dict['id'])
     career_df = career.get_data_frames()[0]
-
-    # team id during the season
     team_id = career_df[career_df['SEASON_ID'] == season_id]['TEAM_ID']
-
-    # shotchardtdetail endpoint
-    shotchartlist = shotchartdetail.ShotChartDetail(team_id=team_id,
-                                                    player_id=player_dict['id'],
-                                                    season_type_all_star='Regular Season',
-                                                    season_nullable=season_id,
-                                                    game_id_nullable=game_id,
-                                                    context_measure_simple="FGA").get_data_frames()
-
-    # data = shotchartlist.get_normalized_dict()
-    #
-    # # This gives you the shots in: data['Shot_Chart_Detail']
-    # shot_data = data['Shot_Chart_Detail']
-
-    return shotchartlist[0]
+    shot_chart_list = shotchartdetail.ShotChartDetail(team_id=team_id,
+                                                      player_id=player_dict['id'],
+                                                      season_type_all_star='Regular Season',
+                                                      season_nullable=season_id,
+                                                      game_id_nullable=game_id,
+                                                      context_measure_simple="FGA").get_data_frames()
+    return shot_chart_list[0]
 
 
-def get_player_shotchartdetail(player_name, season_id):
-    """
-    Parameters
-    ----------
-    player_name: name of the player with Capital
-    season_id: ex. 2012-13
-    """
-
-    # player dictionary
+def get_player_shot_chart_detail(player_name, season_id):
     nba_players = players.get_players()
     player_dict = [player for player in nba_players if player['full_name'] == player_name][0]
-
-    # career df
     career = playercareerstats.PlayerCareerStats(player_id=player_dict['id'])
     career_df = career.get_data_frames()[0]
-
-    # team id during the season
     team_id = career_df[career_df['SEASON_ID'] == season_id]['TEAM_ID']
-
-    # shotchardtdetail endpoint
-    shotchartlist = shotchartdetail.ShotChartDetail(team_id=team_id,
-                                                    player_id=player_dict['id'],
-                                                    season_type_all_star='Regular Season',
-                                                    season_nullable=season_id,
-                                                    context_measure_simple="FGA").get_data_frames()
-
-    return shotchartlist[0], shotchartlist[1]
+    shot_chart_list = shotchartdetail.ShotChartDetail(team_id=team_id,
+                                                      player_id=player_dict['id'],
+                                                      season_type_all_star='Regular Season',
+                                                      season_nullable=season_id,
+                                                      context_measure_simple="FGA").get_data_frames()
+    return shot_chart_list[0], shot_chart_list[1]
 
 
 def draw_court(ax=None, color="black", lw=1, shotzone=False, outer_lines=False):
-    """Returns an axes with a basketball court drawn onto to it.
-    This function draws a court based on the x and y-axis values that the NBA
-    stats API provides for the shot chart data.  For example the center of the
-    hoop is located at the (0,0) coordinate.  Twenty-two feet from the left of
-    the center of the hoop in is represented by the (-220,0) coordinates.
-    So one foot equals +/-10 units on the x and y-axis.
-    Parameters
-    ----------
-    ax : Axes, optional
-        The Axes object to plot the court onto.
-    color : matplotlib color, optional
-        The color of the court lines.
-    lw : float, optional
-        The linewidth the of the court lines.
-    outer_lines : boolean, optional
-        If `True` it draws the out of bound lines in same style as the rest of
-        the court.
-    Returns
-    -------
-    ax : Axes
-        The Axes object with the court on it.
-    """
     if ax is None:
         ax = plt.gca()
 
@@ -130,9 +82,9 @@ def draw_court(ax=None, color="black", lw=1, shotzone=False, outer_lines=False):
     center_outer_arc = Arc((0, 422.5), 120, 120, theta1=180, theta2=0, linewidth=lw, color=color)
     center_inner_arc = Arc((0, 422.5), 40, 40, theta1=180, theta2=0, linewidth=lw, color=color)
 
-    # Draw shotzone Lines
+    # Draw shot zone Lines
     # Based on Advanced Zone Mode
-    if (shotzone == True):
+    if shotzone == True:
         inner_circle = Circle((0, 0), radius=80, linewidth=lw, color='black', fill=False)
         outer_circle = Circle((0, 0), radius=160, linewidth=lw, color='black', fill=False)
         corner_three_a_x = Rectangle((-250, 92.5), 30, 0, linewidth=lw, color=color)
@@ -175,12 +127,6 @@ def draw_court(ax=None, color="black", lw=1, shotzone=False, outer_lines=False):
         ax.add_patch(element)
 
     return ax
-
-
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-import matplotlib.pyplot as plt
-import os
-from PIL import Image
 
 
 def shot_chart(data, player_name, year, title="", color="b",
@@ -243,7 +189,7 @@ def shot_chart(data, player_name, year, title="", color="b",
     # Save chart
     save_directory = 'shotcharts'
     os.makedirs(save_directory, exist_ok=True)
-    file_name = os.path.join(save_directory, f"{player_name}_{year}_regular_shotchart.png")
+    file_name = os.path.join(save_directory, f"{player_name}_{year}_regular_season_shot_chart.png")
     fig.savefig(file_name, dpi=300)
     plt.close(fig)
 
@@ -272,15 +218,10 @@ def sized_hexbin(ax, hc, hc2, cmap, norm):
         if (int(val) == 0):
             continue
         elif (percentileofscore(filtered_list, val) < 33.33):
-            # print(percentileofscore(values1, val))
-            # print("bot")
             v1 = verts * 0.3 + offset
         elif (percentileofscore(filtered_list, val) > 69.99):
-            # print(percentileofscore(values1, val))
-            # print("top")
             v1 = verts + offset
         else:
-            # print("mid")
             v1 = verts * 0.6 + offset
 
         path = Path(v1, orgpath.codes)
@@ -428,13 +369,6 @@ def hexmap_chart(data, league_avg, title="", color="b",
                  court_color="#FFFFFF", court_lw=2, outer_lines=False,
                  flip_court=False, gridsize=None,
                  ax=None, despine=False, **kwargs):
-    # LA = (league_avg.loc[:, ['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'FGA', 'FGM']]
-    #       .groupby(['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE'])
-    #       .sum())
-    # LA['FGP'] = 1.0 * LA['FGM'] / LA['FGA']
-    # player = data.groupby(['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'SHOT_MADE_FLAG']).size().unstack(fill_value=0)
-    # player['FGP'] = 1.0 * player.loc[:, 1] / player.sum(axis=1)
-
     LA = (league_avg.loc[:, ['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'FGA', 'FGM']]
           .groupby(['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE'])
           .sum())
@@ -496,7 +430,7 @@ def hexmap_chart(data, league_avg, title="", color="b",
     # Add colorbar legend for FG% difference vs. league average
     # Add legend colorbar for FG% difference
 
-    draw_custom_legend(ax)
+    draw_custom_hex_legend(ax)
     # # Define colormap and norm
     # bounds = [-9, -6, -3, 0, 3, 6, 9]
     # cmap = plt.get_cmap('coolwarm')  # or whatever colormap you're using
@@ -546,48 +480,34 @@ def hexmap_chart(data, league_avg, title="", color="b",
     plt.close()  # Close the figure to release memory
 
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import numpy as np
+def draw_custom_hex_legend(ax):
+    import matplotlib.patches as mpatches
 
-
-def draw_custom_legend(ax):
-    # Efficiency legend hex colors (customize as needed)
-    colors = ['#4575b4', '#91bfdb', '#e0f3f8', '#ffffbf', '#fee090', '#fc8d59', '#d73027']
+    # Colors (adjust to match your cmap)
+    colors = ['#1f77b4', '#5fa2c7', '#d1e4f2', '#ffffcc', '#ffe699', '#f4b183', '#c00000']
     labels = ['Much Worse', 'Worse', 'Below Avg', 'Avg', 'Above Avg', 'Better', 'Much Better']
 
-    # Add efficiency hexes
+    # Draw colored hexagons
     for i, (color, label) in enumerate(zip(colors, labels)):
-        x = i * 1.2
-        hex = patches.RegularPolygon((x, 0), numVertices=6, radius=0.5, orientation=np.radians(30), facecolor=color,
-                                     edgecolor='white')
-        ax.add_patch(hex)
-        ax.text(x, -0.9, label, ha='center', fontsize=8, color='white')
+        hexagon = mpatches.RegularPolygon((i, 0.5), numVertices=6, radius=0.4, orientation=np.radians(30),
+                                          facecolor=color, edgecolor='white')
+        ax.add_patch(hexagon)
+        ax.text(i, -0.2, label, ha='center', va='center', fontsize=8, color='white')
 
-    # Add frequency legend
-    sizes = [0.2, 0.4, 0.6]
-    freqs = ['Low', '', 'High']
-    x_base = len(colors) * 1.2 + 2
+    # Frequency hexagons (gray)
+    freqs = [0.2, 0.4, 0.6]
+    x_start = len(labels) + 1.5
+    for i, size in enumerate(freqs):
+        hexagon = mpatches.RegularPolygon((x_start + i, 0.5), numVertices=6, radius=size,
+                                          orientation=np.radians(30), facecolor='gray', edgecolor='white')
+        ax.add_patch(hexagon)
+    ax.text(x_start + 1, -0.2, "Low", ha='center', va='center', fontsize=8, color='white')
+    ax.text(x_start + 2, -0.2, "High", ha='center', va='center', fontsize=8, color='white')
 
-    for i, (size, freq) in enumerate(zip(sizes, freqs)):
-        hex = patches.RegularPolygon((x_base + i * 1.5, 0), numVertices=6, radius=size, orientation=np.radians(30),
-                                     facecolor='gray', edgecolor='white')
-        ax.add_patch(hex)
-        if freq:
-            ax.text(x_base + i * 1.5, -0.9, freq, ha='center', fontsize=8, color='white')
-
-    # Set limits and remove axes
-    ax.set_xlim(-1, x_base + 4)
-    ax.set_ylim(-2, 1.5)
+    ax.set_xlim(-1, x_start + 3)
+    ax.set_ylim(-1, 1.5)
     ax.axis('off')
-    ax.set_facecolor('#0e1117')  # Dark background like the original
-
-
-# Example usage
-# fig, ax = plt.subplots(figsize=(12, 2))
-# draw_custom_legend(ax)
-# plt.tight_layout()
-# plt.show()
+    ax.set_facecolor('#ea907a')  # match your chart background
 
 
 def shot_zones(data, league_avg, title="", color="b",
@@ -608,33 +528,22 @@ def shot_zones(data, league_avg, title="", color="b",
     ax.tick_params(labelbottom="off", labelleft="off")
     ax.set_title(title, fontsize=18)
 
-    # draws the court
-    # set shotzone to True
     draw_court(ax, color=line_color, lw=court_lw, shotzone=True, outer_lines=outer_lines)
 
     LA = (league_avg.loc[:, ['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'FGA', 'FGM']]
           .groupby(['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE'])
           .sum())
     LA['FGP'] = 1.0 * LA['FGM'] / LA['FGA']
-    print(LA)
-
     player = data.groupby(['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'SHOT_MADE_FLAG']).size().unstack(fill_value=0)
     player['FGP'] = 1.0 * player.loc[:, 1] / player.sum(axis=1)
     player_vs_league = (player.loc[:, 'FGP'] - LA.loc[:, 'FGP']) * 100
-    print(player_vs_league)
 
     data = pd.merge(data, player_vs_league, on=['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE'], how='right')
-
     x_made = data[data['EVENT_TYPE'] == 'Made Shot']['LOC_X']
     y_made = data[data['EVENT_TYPE'] == 'Made Shot']['LOC_Y']
-
-    # plot missed shots
-    # ax.scatter(x_missed, y_missed, c='r', marker="x", s=300, linewidths=3, **kwargs)
-    # plot made shots
     ax.scatter(x_made, y_made, facecolors='none', edgecolors='b', s=100, linewidths=3, **kwargs)
 
     # Set the spines to match the rest of court lines, makes outer_lines
-    # somewhate unnecessary
     for spine in ax.spines:
         ax.spines[spine].set_lw(court_lw)
         ax.spines[spine].set_color(line_color)
@@ -664,7 +573,6 @@ def heatmap(data, title="", color="b",
     ax.tick_params(labelbottom="off", labelleft="off")
     ax.set_title(title, fontsize=18)
 
-    # draws the court
     draw_court(ax, color=line_color, lw=court_lw, outer_lines=outer_lines)
 
     x = data['LOC_X']
@@ -679,7 +587,6 @@ def heatmap(data, title="", color="b",
     draw_court(ax, color="white", lw=2, outer_lines=False)
 
     # Set the spines to match the rest of court lines, makes outer_lines
-    # somewhate unnecessary
     for spine in ax.spines:
         ax.spines[spine].set_lw(court_lw)
         ax.spines[spine].set_color(line_color)
@@ -691,17 +598,16 @@ def heatmap(data, title="", color="b",
         ax.spines["left"].set_visible(False)
 
     save_directory = 'shotcharts'
-
-    file_name = os.path.join(save_directory, f"{player_name}_{year}_heatmap_chart.png")
+    file_name = os.path.join(save_directory, f"{player_name}_{season}_heatmap_season_chart.png")
     plt.savefig(file_name)
-    plt.close()  # Close the figure to release memory
+    plt.close()
 
 
 # player_name = 'Duncan Robinson'
 # year = '2024-25'
 
 def create_player_season_shot_chart_hexmap_heatmap(player_name, year):
-    player_shotchart_df, league_avg = get_player_shotchartdetail(player_name, year)
+    player_shotchart_df, league_avg = get_player_shot_chart_detail(player_name, year)
     # shot_chart(player_shotchart_df, player_name, year)
     # plt.rcParams['figure.figsize'] = (12, 11)
     # plt.show()
@@ -714,11 +620,11 @@ season = "2024-25"
 # game_id = '0042400111'
 
 
-shot_df, _ = get_player_shotchartdetail(player_name, season)
+shot_df, _ = get_player_shot_chart_detail(player_name, season)
 shot_chart(shot_df, player_name, season)
 chart_path = hexbin_shot_chart(shot_df, player_name, season)
 hexbin_shot_chart(shot_df, player_name, season)
-player_shotchart_df, league_avg = get_player_shotchartdetail(player_name, season)
+player_shotchart_df, league_avg = get_player_shot_chart_detail(player_name, season)
 
 # df = get_player_sper_game_shot_chart(player_name,season,game_id)
 # shot_chart(df, player_name, season)
@@ -726,14 +632,14 @@ hexmap_chart(player_shotchart_df, league_avg)
 
 
 def create_hexmap_per_season(player_name, season):
-    player_shotchart_df, league_avg = get_player_shotchartdetail(player_name, season)
-    hexmap_chart(player_shotchart_df, league_avg)
-    return f"Hexmap created for {player_name}"
+    player_shot_chart_df, league_avg = get_player_shot_chart_detail(player_name, season)
+    hexmap_chart(player_shot_chart_df, league_avg)
+    return f"Hexmap created for {player_name} for season: {season}"
 
 
 def create_hexmap_per_game(player_name, season, game_id):
     df = get_player_sper_game_shot_chart(player_name, season, game_id)
-    player_shotchart_df, league_avg = get_player_shotchartdetail(player_name, season)
+    player_shotchart_df, league_avg = get_player_shot_chart_detail(player_name, season)
     shot_chart(df, player_name, season)
     hexmap_chart(df, league_avg)
     return f"Hexmap created for {player_name} for game id: {game_id}"
@@ -745,16 +651,14 @@ def create_shot_chart_per_game(player_name, season, game_id):
     return f"Shot Chart created for {player_name} for game id: {game_id}"
 
 
-# Set the size for our plots
+def create_shot_chart_per_season(player_name, season):
+    player_shot_chart_df = get_player_shot_chart_detail(player_name, season)
+    shot_chart(player_shot_chart_df, player_name, season)
+    plt.show()
+    return f"Shot Chart created for {player_name} for season: {season}"
 
 
-# shot_chart(player_shotchart_df, player_name, year)
-# plt.show()
-player_shotchart_df, league_avg = get_player_shotchartdetail(player_name, season)
-# hexmap_chart(player_shotchart_df,league_avg)
-#
-#
-# plt.show()
-# shot_zones(player_shotchart_df, league_avg, title=str(player_name) + " Heat Map " + str(year))
-# heatmap(player_shotchart_df, player_name, year)
-# plt.show()
+def create_heat_map_per_season(player_name, season):
+    player_shot_chart_df = get_player_shot_chart_detail(player_name, season)
+    heatmap(player_shot_chart_df, player_name, season)
+    plt.show()
