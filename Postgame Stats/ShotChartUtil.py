@@ -1,6 +1,7 @@
 from io import BytesIO
 import pandas as pd
 import requests
+from matplotlib.cm import ScalarMappable
 from scipy.stats import percentileofscore
 from nba_api.stats.static import players
 from nba_api.stats.endpoints import shotchartdetail
@@ -17,6 +18,7 @@ import os
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.patches as mpatches
 
 sns.set_style('white')
 sns.set_color_codes()
@@ -174,7 +176,16 @@ def shot_chart(data, player_name, year, title="", color="b",
         for spine in ["top", "bottom", "right", "left"]:
             ax.spines[spine].set_visible(False)
 
-    # ==== Add player image in bottom left corner ====
+    add_player_image_to_shot_chart(ax, player_image_path, player_name, xlim, ylim)
+    save_directory = 'shotcharts'
+    os.makedirs(save_directory, exist_ok=True)
+    file_name = os.path.join(save_directory, f"{player_name}_{year}_regular_season_shot_chart.png")
+    fig.savefig(file_name, dpi=300)
+    plt.close(fig)
+    return file_name
+
+
+def add_player_image_to_shot_chart(ax, player_image_path, player_name, xlim, ylim):
     if player_image_path and os.path.exists(player_image_path):
         player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(player_name)
         url = f"https://cdn.nba.com/headshots/nba/latest/260x190/{player_id}.png"
@@ -185,15 +196,6 @@ def shot_chart(data, player_name, year, title="", color="b",
             ax.add_artist(ab)
         except Exception as e:
             print(f"Could not load image for player {player_id}: {e}")
-
-    # Save chart
-    save_directory = 'shotcharts'
-    os.makedirs(save_directory, exist_ok=True)
-    file_name = os.path.join(save_directory, f"{player_name}_{year}_regular_season_shot_chart.png")
-    fig.savefig(file_name, dpi=300)
-    plt.close(fig)
-
-    return file_name
 
 
 def sized_hexbin(ax, hc, hc2, cmap, norm):
@@ -206,15 +208,7 @@ def sized_hexbin(ax, hc, hc2, cmap, norm):
     patches = []
 
     for offset, val in zip(offsets, values1):
-        # Adding condition for minimum size
-        # offset is the respective position of each hexagons
-
-        # remove 0 to compare frequency without 0s
         filtered_list = list(filter(lambda num: num != 0, values1))
-
-        # we also skip frequency counts that are 0s
-        # this is to discount hexbins with no occurences
-        # default value hexagons are the frequencies
         if (int(val) == 0):
             continue
         elif (percentileofscore(filtered_list, val) < 33.33):
@@ -286,84 +280,10 @@ def hexbin_shot_chart(data, player_name, year, title="", cmap='coolwarm', gridsi
     file_name = f"shotcharts/{player_name}_{year}_hexbin.png"
     os.makedirs("shotcharts", exist_ok=True)
     plt.savefig(file_name, dpi=300)
+    plt.title(f"{player_name} field goal percentage for {year}")
     plt.close()
     return file_name
 
-
-# def hexmap_chart(data, league_avg, title="", color="b",
-#                  xlim=(-250, 250), ylim=(422.5, -47.5), line_color="black",
-#                  court_color="#FFFFFF", court_lw=2, outer_lines=False,
-#                  flip_court=False, gridsize=None,
-#                  ax=None, despine=False, **kwargs):
-#
-#     # 1. League averages by zone
-#     LA = (
-#         league_avg[['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'FGA', 'FGM']]
-#         .groupby(['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE'])
-#         .sum()
-#     )
-#     LA['FGP'] = LA['FGM'] / LA['FGA']
-#
-#     # 2. Player zone-level shot data
-#     player = (
-#         data.groupby(['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'SHOT_MADE_FLAG'])
-#         .size()
-#         .unstack(level=-1, fill_value=0)
-#     )
-#
-#     # 3. Ensure both made/missed columns exist
-#     for col in [0, 1]:
-#         if col not in player.columns:
-#             player[col] = 0
-#
-#     # 4. Rename columns
-#     player.columns.name = None
-#     player = player.rename(columns={0: 'Misses', 1: 'Makes'})
-#
-#     # 5. FG%, FGA
-#     player['FGA'] = player['Makes'] + player['Misses']
-#     player['FGP'] = player['Makes'] / player['FGA']
-#
-#     # 6. Join with league averages
-#     merged = player.join(LA, rsuffix='_LEAGUE')
-#     merged['FGP_DIFF'] = merged['FGP'] - merged['FGP_LEAGUE']
-#
-#     # 7. Visualization
-#     if ax is None:
-#         fig, ax = plt.subplots(figsize=(10, 9))
-#
-#     ax.set_facecolor(court_color)
-#
-#     # (Optional) Add half-court features here (if you want a full court drawn)
-#
-#     # Draw hexmap or scatter
-#     shot_x = data['LOC_X']
-#     shot_y = data['LOC_Y']
-#
-#     if gridsize:
-#         hb = ax.hexbin(
-#             shot_x, shot_y,
-#             gridsize=gridsize,
-#             extent=(xlim[0], xlim[1], ylim[1], ylim[0]),
-#             cmap='coolwarm',
-#             mincnt=1,
-#             linewidths=0.5,
-#             edgecolors='gray'
-#         )
-#         plt.colorbar(hb, ax=ax, label="Shot Density")
-#     else:
-#         sns.scatterplot(data=data, x='LOC_X', y='LOC_Y', hue='SHOT_MADE_FLAG',
-#                         palette={1: 'green', 0: 'red'}, ax=ax, legend=False)
-#
-#     ax.set_xlim(xlim)
-#     ax.set_ylim(ylim)
-#     ax.set_title(title, fontsize=18)
-#     ax.axis('off')
-#
-#     if despine:
-#         sns.despine(ax=ax)
-#
-#     return ax
 def hexmap_chart(data, league_avg, title="", color="b",
                  xlim=(-250, 250), ylim=(422.5, -47.5), line_color="black",
                  court_color="#FFFFFF", court_lw=2, outer_lines=False,
@@ -430,24 +350,24 @@ def hexmap_chart(data, league_avg, title="", color="b",
     # Add colorbar legend for FG% difference vs. league average
     # Add legend colorbar for FG% difference
 
-    draw_custom_hex_legend(ax)
-    # # Define colormap and norm
-    # bounds = [-9, -6, -3, 0, 3, 6, 9]
-    # cmap = plt.get_cmap('coolwarm')  # or whatever colormap you're using
-    # norm = BoundaryNorm(bounds, cmap.N)
-    #
-    # # Create ScalarMappable and force it to have valid values
-    # sm = ScalarMappable(cmap=cmap, norm=norm)
-    # sm.set_array(np.array(bounds))  # THIS IS CRUCIAL
-    #
-    # # Now create the colorbar safely
-    # cbar = plt.colorbar(sm, ax=ax, fraction=0.035, pad=0.04)
-    #
-    # cbar.set_label('FG% vs League Avg', fontsize=12, labelpad=10)
-    # cbar.ax.tick_params(labelsize=10)
-    # cbar.outline.set_visible(False)
-    # cbar.set_ticks([-9, -3, 0, 3, 9])
-    # cbar.set_ticklabels(['Much Worse', 'Worse', 'Avg', 'Better', 'Much Better'])
+    # draw_custom_hex_legend(ax)
+    # Define colormap and norm
+    bounds = [-9, -6, -3, 0, 3, 6, 9]
+    cmap = plt.get_cmap('coolwarm')  # or whatever colormap you're using
+    norm = BoundaryNorm(bounds, cmap.N)
+
+    # Create ScalarMappable and force it to have valid values
+    sm = ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array(np.array(bounds))  # THIS IS CRUCIAL
+
+    # Now create the colorbar safely
+    cbar = plt.colorbar(sm, ax=ax, fraction=0.035, pad=0.04)
+
+    cbar.set_label('FG% vs League Avg', fontsize=12, labelpad=10)
+    cbar.ax.tick_params(labelsize=10)
+    cbar.outline.set_visible(False)
+    cbar.set_ticks([-9, -3, 0, 3, 9])
+    cbar.set_ticklabels(['Much Worse', 'Worse', 'Avg', 'Better', 'Much Better'])
 
     # Set the spines to match the rest of court lines, makes outer_lines
     # somewhate unnecessary
@@ -481,8 +401,6 @@ def hexmap_chart(data, league_avg, title="", color="b",
 
 
 def draw_custom_hex_legend(ax):
-    import matplotlib.patches as mpatches
-
     # Colors (adjust to match your cmap)
     colors = ['#1f77b4', '#5fa2c7', '#d1e4f2', '#ffffcc', '#ffe699', '#f4b183', '#c00000']
     labels = ['Much Worse', 'Worse', 'Below Avg', 'Avg', 'Above Avg', 'Better', 'Much Better']
@@ -603,19 +521,11 @@ def heatmap(data, title="", color="b",
     plt.close()
 
 
-# player_name = 'Duncan Robinson'
-# year = '2024-25'
-
-def create_player_season_shot_chart_hexmap_heatmap(player_name, year):
-    player_shotchart_df, league_avg = get_player_shot_chart_detail(player_name, year)
-    # shot_chart(player_shotchart_df, player_name, year)
-    # plt.rcParams['figure.figsize'] = (12, 11)
-    # plt.show()
-    hexmap_chart(player_shotchart_df, league_avg, title=str(player_name) + " Hex Chart " + str(year))
-    heatmap(player_shotchart_df, player_name, year)
 
 
-player_name = "Devin Booker"
+
+
+player_name = "Tyrese Haliburton"
 season = "2024-25"
 # game_id = '0042400111'
 
@@ -662,3 +572,11 @@ def create_heat_map_per_season(player_name, season):
     player_shot_chart_df = get_player_shot_chart_detail(player_name, season)
     heatmap(player_shot_chart_df, player_name, season)
     plt.show()
+    return f"Heat Map created for {player_name} for season: {season}"
+
+def create_player_season_shot_chart_hexmap_heatmap(player_name, year):
+    player_shotchart_df, league_avg = get_player_shot_chart_detail(player_name, year)
+    hexmap_chart(player_shotchart_df, league_avg, title=str(player_name) + " Hex Chart " + str(year))
+    heatmap(player_shotchart_df, player_name, year)
+    return f"Hex Map and Heat Map created for {player_name} for season: {season}"
+
