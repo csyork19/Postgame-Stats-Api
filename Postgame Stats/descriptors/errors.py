@@ -1,5 +1,17 @@
+from urllib import request
+
 from flask import jsonify
 from werkzeug.exceptions import HTTPException
+
+
+def require_json(func):
+    def wrapper(*args, **kwargs):
+        if not request.is_json:
+            return jsonify({'error': 'Expected application/json'}), 400
+        return func(*args, **kwargs)
+
+    wrapper.__name__ = func.__name__
+    return wrapper
 
 
 def handle_exceptions(func):
