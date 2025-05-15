@@ -14,7 +14,6 @@ CORS(app)
 @handle_exceptions
 @app.route('/api/nba/player/id', methods=['POST'])
 def player_id():
-    global player_name
     player_name = request.get_json()['playerName']
     return PostGameStatsUtil.PostGameStatsUtil.get_player_id(player_name)
 
@@ -23,7 +22,6 @@ def player_id():
 @handle_exceptions
 @app.route('/api/wnba/player/id', methods=['POST'])
 def wnba_player_id():
-    global player_name
     player_name = request.get_json()['playerName']
     return PostGameStatsUtil.PostGameStatsUtil.get_wnba_player_id(player_name)
 
@@ -40,7 +38,6 @@ def wnba_player_season_stats():
 @handle_exceptions
 @app.route('/api/gleague/player/id', methods=['POST'])
 def gleague_player_id():
-    global player_name
     player_name = request.get_json()['playerName']
     return PostGameStatsUtil.PostGameStatsUtil.get_gleague_player_id(player_name)
 
@@ -49,7 +46,6 @@ def gleague_player_id():
 @handle_exceptions
 @app.route('/api/gleague/player/seasonStats', methods=['POST'])
 def gleague_player_season_stats():
-    global player_name
     player_name = request.get_json()['playerName']
     return NbaPlayerStats.get_glegaue_player_season_stats(player_name)
 
@@ -58,7 +54,6 @@ def gleague_player_season_stats():
 @handle_exceptions
 @app.route('/api/nba/player/seasonStats', methods=['POST'])
 def player_season_stats():
-    global player_name
     player_name = request.get_json()['playerName']
     return NbaPlayerStats.get_player_stats(player_name)
 
@@ -67,7 +62,6 @@ def player_season_stats():
 @handle_exceptions
 @app.route('/api/nba/player/perSeasonStats', methods=['POST'])
 def player_any_season_stats():
-    global player_name
     player_name = request.get_json()['playerName']
     year = request.get_json()['season']
     return NbaPlayerStats.get_player_stats_per_season(player_name, year)
@@ -77,7 +71,6 @@ def player_any_season_stats():
 @handle_exceptions
 @app.route('/api/nba/player/perSeasonAverages', methods=['POST'])
 def nba_player_season_averages():
-    global player_name
     player_name = request.get_json()['playerName']
     year = request.get_json()['season']
     return NbaPlayerStats.get_player_stats(player_name, year)
@@ -148,7 +141,6 @@ def player_regular_season_short_chart():
 @handle_exceptions
 @app.route('/api/nba/player/regularSeasonHexmap', methods=['POST'])
 def player_regular_season_hex_map():
-    global player_name, season
     player_name = request.get_json()['playerName']
     season = request.get_json()['season']
     return ShotChartUtil.create_hexmap_per_season(player_name, season)
@@ -175,7 +167,6 @@ def team_season_stats():
 @handle_exceptions
 @app.route('/api/nba/team/seasonAverages', methods=['POST'])
 def team_season_average_stats():
-    global team_name, season
     data = request.get_json()
     team_name = data.get('teamName', '')
     season = request.get_json()['season']
@@ -196,7 +187,6 @@ def team_playoff_stats():
 @handle_exceptions
 @app.route('/api/nba/team/playoffStatsAverage', methods=['POST'])
 def team_playoff_average_stats():
-    global team_name, season
     data = request.get_json()
     team_name = data.get('teamName', '')
     season = request.get_json()['season']
