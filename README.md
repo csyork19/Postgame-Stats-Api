@@ -43,6 +43,117 @@ PostGame Stats is a **Flask-based REST API** that provides free access to compre
 }
 ```
 
+## Sample Response
+- **Player Stats**: `/api/nba/player/perSeasonAverages`  
+```
+[
+    {
+        "AST": 1,
+        "BLK": 2,
+        "DREB": 1,
+        "FG3A": 0,
+        "FG3M": 0,
+        "FG3_PCT": 0.0,
+        "FGA": 4,
+        "FGM": 2,
+        "FG_PCT": 0.5,
+        "FTA": 0,
+        "FTM": 0,
+        "FT_PCT": 0.0,
+        "GAME_DATE": "Dec 08, 2023",
+        "MATCHUP": "CHA vs. TOR",
+        "MIN": 20,
+        "OREB": 2,
+        "PF": 2,
+        "PLUS_MINUS": 5,
+        "PTS": 4,
+        "REB": 3,
+        "STL": 1,
+        "TOV": 1,
+        "WL": "W"
+    },
+    {
+        "AST": 0,
+        "BLK": 0,
+        "DREB": 4,
+        "FG3A": 0,
+        "FG3M": 0,
+        "FG3_PCT": 0.0,
+        "FGA": 6,
+        "FGM": 4,
+        "FG_PCT": 0.667,
+        "FTA": 4,
+        "FTM": 3,
+        "FT_PCT": 0.75,
+        "GAME_DATE": "Dec 02, 2023",
+        "MATCHUP": "CHA vs. MIN",
+        "MIN": 29,
+        "OREB": 2,
+        "PF": 6,
+        "PLUS_MINUS": -8,
+        "PTS": 11,
+        "REB": 6,
+        "STL": 0,
+        "TOV": 1,
+        "WL": "L"
+    },
+    {
+        "AST": 1,
+        "BLK": 3,
+        "DREB": 7,
+        "FG3A": 0,
+        "FG3M": 0,
+        "FG3_PCT": 0.0,
+        "FGA": 12,
+        "FGM": 5,
+        "FG_PCT": 0.417,
+        "FTA": 2,
+        "FTM": 2,
+        "FT_PCT": 1.0,
+        "GAME_DATE": "Nov 30, 2023",
+        "MATCHUP": "CHA @ BKN",
+        "MIN": 32,
+        "OREB": 5,
+        "PF": 2,
+        "PLUS_MINUS": -2,
+        "PTS": 12,
+        "REB": 12,
+        "STL": 1,
+        "TOV": 0,
+        "WL": "W"
+    },
+    {
+        "AST": 0,
+        "BLK": 0,
+        "DREB": 6,
+        "FG3A": 0,
+        "FG3M": 0,
+        "FG3_PCT": 0.0,
+        "FGA": 9,
+        "FGM": 5,
+        "FG_PCT": 0.556,
+        "FTA": 2,
+        "FTM": 2,
+        "FT_PCT": 1.0,
+        "GAME_DATE": "Nov 28, 2023",
+        "MATCHUP": "CHA @ NYK",
+        "MIN": 25,
+        "OREB": 6,
+        "PF": 2,
+        "PLUS_MINUS": -7,
+        "PTS": 12,
+        "REB": 12,
+        "STL": 1,
+        "TOV": 0,
+        "WL": "L"
+    }
+]
+.
+.
+.
+.
+```
+
 ## Contributions  
 Contributions are welcome! Feel free to submit issues or create pull requests to improve the API.  
 
