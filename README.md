@@ -25,7 +25,23 @@ PostGame Stats is a **Flask-based REST API** that provides free access to compre
 ## Example Endpoints  
 - **Player Stats**: `/api/nba/player/seasonAverages`  
 - **Team Stats**: `/api/team/seasonStats`  
-- **Team Playoff Ststs**: `/api/team/playoffStats`  
+- **Team Playoff Ststs**: `/api/team/playoffStats`
+
+## Sample Request
+- **Player Stats**: `/api/nba/player/perSeasonAverages`  
+```
+{
+    "playerName": "Mark Williams",
+    "season": "2024-25"
+}
+```
+- **Player Stats**: `/api/team/playoffStats`
+```
+{
+    "teamName": "Golden State Warriors",
+    "season": "2024-25"
+}
+```
 
 ## Contributions  
 Contributions are welcome! Feel free to submit issues or create pull requests to improve the API.  
