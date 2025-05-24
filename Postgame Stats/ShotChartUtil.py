@@ -430,36 +430,29 @@ def hexmap_chart(data, league_avg, nba_player_name,nba_season,title="", color="b
         ax.spines["left"].set_visible(False)
 
     # Add player image
-    season = nba_season
-    player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(str(nba_player_name))
-    nba_player_stat_columns = [
-        "AST", "BLK", "DREB", "FG3A", "FG3M", "FG3_PCT", "FGA", "FGM", "FG_PCT",
-        "FTA", "FTM", "FT_PCT", "MIN", "OREB", "PF", "PLUS_MINUS", "PTS", "REB", "STL", "TOV"]
-
-    nba_player_logs = playergamelog.PlayerGameLog(player_id=player_id,season=season,season_type_all_star='Playoffs').get_data_frames()[0]
-    nba_player_season_average = nba_player_logs[nba_player_stat_columns].mean().round(2).to_dict()
-    points = nba_player_season_average['PTS']
-    fg = nba_player_season_average['FG_PCT']
-    fg3 = nba_player_season_average['FG3_PCT']
-    plus_minus = nba_player_season_average['PLUS_MINUS']
-    assist = nba_player_season_average['AST']
-    blocks = nba_player_season_average['BLK']
-    rebounds = nba_player_season_average['REB']
-    steals = nba_player_season_average['STL']
-
+    assist, blocks, fg, fg3, player_id, plus_minus, points, rebounds, season, steals = add_player_stats_to_shot_chart(
+        nba_player_name, nba_season)
     add_player_image_to_chart(ax, player_id, xlim, ylim)
+    add_shot_chart_header_info(assist, blocks, fg, fg3, fig, plus_minus, points, rebounds, season, steals)
 
+    # Save the chart
+    save_directory = 'shotcharts'
+    os.makedirs(save_directory, exist_ok=True)
+    file_name = os.path.join(save_directory, f"{nba_player_name}_{season}_hexmap_chart.png")
+    plt.savefig(file_name, dpi=300)
+    plt.close()
+    return file_name
+
+
+def add_shot_chart_header_info(assist, blocks, fg, fg3, fig, plus_minus, points, rebounds, season, steals):
     top_row_y_val = 0.90
     bottom_row_y_val = 0.80
     x_spacing = 0.15  # a bit more spacing for label next to value
     x_start = 0.38
-
     horizontal_label_offset = 0.015  # distance to right of the value
     vertical_label_offset = -0.01
-
     stat_values = [points, fg, fg3, assist, blocks, rebounds, steals, plus_minus]
     stat_labels = ["PPG", "FG%", "3P%", "AST", "BLK", "REB", "STL", "+/-"]
-
     for i, (val, label) in enumerate(zip(stat_values, stat_labels)):
         row = 0 if i < 4 else 1
         col = i % 4
@@ -476,18 +469,31 @@ def hexmap_chart(data, league_avg, nba_player_name,nba_season,title="", color="b
 
         fig.text(x_val, y_val, val_text, fontsize=35, fontweight='bold', ha='right', va='center', color='black')
         fig.text(x_label, y_label, label, fontsize=10, color='gray', ha='left', va='center')
-
     # Optional stat block title
-    fig.text(0.5, 0.96, f"{season} Regular Season Performance",
+    fig.text(0.5, 0.96, f"{player_name} {season} Regular Season Performance",
              ha='center', va='top', fontsize=16, fontweight='bold')
 
-    # Save the chart
-    save_directory = 'shotcharts'
-    os.makedirs(save_directory, exist_ok=True)
-    file_name = os.path.join(save_directory, f"{nba_player_name}_{season}_hexmap_chart.png")
-    plt.savefig(file_name, dpi=300)
-    plt.close()
-    return file_name
+
+def add_player_stats_to_shot_chart(nba_player_name, nba_season):
+    season = nba_season
+    player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(str(nba_player_name))
+    nba_player_stat_columns = [
+        "AST", "BLK", "DREB", "FG3A", "FG3M", "FG3_PCT", "FGA", "FGM", "FG_PCT",
+        "FTA", "FTM", "FT_PCT", "MIN", "OREB", "PF", "PLUS_MINUS", "PTS", "REB", "STL", "TOV"]
+    nba_player_logs = \
+    playergamelog.PlayerGameLog(player_id=player_id, season=season, season_type_all_star='Playoffs').get_data_frames()[
+        0]
+    nba_player_season_average = nba_player_logs[nba_player_stat_columns].mean().round(2).to_dict()
+    points = nba_player_season_average['PTS']
+    fg = nba_player_season_average['FG_PCT']
+    fg3 = nba_player_season_average['FG3_PCT']
+    plus_minus = nba_player_season_average['PLUS_MINUS']
+    assist = nba_player_season_average['AST']
+    blocks = nba_player_season_average['BLK']
+    rebounds = nba_player_season_average['REB']
+    steals = nba_player_season_average['STL']
+    return assist, blocks, fg, fg3, player_id, plus_minus, points, rebounds, season, steals
+
 
 def hexmap_playoff_chart(data, league_avg, nba_player_name,title="", color="b",
                  xlim=(-250, 250), ylim=(422.5, -47.5), line_color="black",
@@ -932,6 +938,8 @@ hexmap_playoff_chart(player_playoff_shotchart_df, playoff_leage_avg, player_name
 
 
 heatmap(player_shotchart_df)
+
+
 
 
 def create_hexmap_per_season(player_name, season):
