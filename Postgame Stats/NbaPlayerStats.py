@@ -3,8 +3,6 @@ from nba_api.stats.static import players
 from nba_api.stats.endpoints import BoxScoreTraditionalV2
 
 import PostGameStatsUtil
-import ExceptionHandler
-
 
 def get_glegaue_player_season_stats(self):
     gleague_player_logs = playergamelog.PlayerGameLog(

@@ -6,9 +6,7 @@ from nba_api.stats.static import players
 from nba_api.stats.endpoints import shotchartdetail, playergamelog
 from nba_api.stats.endpoints import playercareerstats
 import seaborn as sns
-from matplotlib.patches import Circle, Rectangle, Arc
 from matplotlib.collections import PatchCollection
-from matplotlib.colors import ListedColormap, BoundaryNorm
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 import PostGameStatsUtil
@@ -18,6 +16,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.patches as mpatches
+from matplotlib.patches import Circle, Rectangle, Arc
 
 sns.set_style('white')
 sns.set_color_codes()
@@ -53,8 +52,83 @@ def get_player_shot_chart_detail(player_name, season_id):
                                                       context_measure_simple="FGA").get_data_frames()
     return shot_chart_list[0], shot_chart_list[1]
 
+def get_player_playoff_shot_chart_detail(player_name, season_id):
+    nba_players = players.get_players()
+    player_dict = [player for player in nba_players if player['full_name'] == player_name][0]
+    career = playercareerstats.PlayerCareerStats(player_id=player_dict['id'])
+    career_df = career.get_data_frames()[0]
+    team_id = career_df[career_df['SEASON_ID'] == season_id]['TEAM_ID']
+    shot_chart_list = shotchartdetail.ShotChartDetail(team_id=team_id,
+                                                      player_id=player_dict['id'],
+                                                      season_type_all_star='Playoffs',
+                                                      season_nullable=season_id,
+                                                      context_measure_simple="FGA").get_data_frames()
+    return shot_chart_list[0], shot_chart_list[1]
 
-def draw_court(ax=None, color="black", lw=1, shotzone=False, outer_lines=False):
+
+
+
+
+def draw_court_v2(ax=None, color="black", lw=1, shotzone=False, outer_lines=False, flip=False):
+    if ax is None:
+        ax = plt.gca()
+
+    # Flip y-values if needed
+    def flip_y(y):
+        return 422.5 - y if flip else y
+
+    def create_rect(x, y, width, height):
+        return Rectangle((x, flip_y(y)), width, -height if flip else height, linewidth=lw, color=color, fill=False)
+
+    def create_arc(xy, width, height, theta1, theta2, dashed=False):
+        # Flip angles if flipping vertically
+        if flip:
+            theta1, theta2 = (360 - theta2) % 360, (360 - theta1) % 360
+        return Arc((xy[0], flip_y(xy[1])), width, height,
+                   theta1=theta1, theta2=theta2,
+                   linewidth=lw, color=color, linestyle='dashed' if dashed else 'solid')
+
+    def create_circle(center, radius):
+        return Circle((center[0], flip_y(center[1])), radius=radius, linewidth=lw, color=color, fill=False)
+
+    court_elements = [
+        create_circle((0, 0), 7.5),  # Hoop
+        create_rect(-30, -12.5, 60, 0),  # Backboard
+        create_rect(-80, -47.5, 160, 190),  # Outer box
+        create_rect(-60, -47.5, 120, 190),  # Inner box
+        create_arc((0, 142.5), 120, 120, 0, 180),  # Top free-throw arc
+        create_arc((0, 142.5), 120, 120, 180, 0, dashed=True),  # Bottom free-throw arc
+        create_arc((0, 0), 80, 80, 0, 180),  # Restricted arc
+        create_rect(-220, -47.5, 0, 140),  # Left corner 3
+        create_rect(220, -47.5, 0, 140),  # Right corner 3
+        create_arc((0, 0), 475, 475, 22, 158)
+    ]
+
+    if shotzone:
+        court_elements += [
+            create_circle((0, 0), 80),
+            create_circle((0, 0), 160),
+            create_rect(-250, 92.5, 30, 0),
+            create_rect(220, 92.5, 30, 0),
+            create_rect(40, 69.28, 80, 0),
+            create_rect(-40, 69.28, 80, 0),
+            create_rect(53.20, 150.89, 290, 0),
+            create_rect(-53.20, 150.89, 290, 0),
+            create_rect(130.54, 92.5, 80, 0),
+            create_rect(-130.54, 92.5, 80, 0),
+        ]
+
+    if outer_lines:
+        court_elements.append(create_rect(-250, -47.5, 500, 470))
+
+    for element in court_elements:
+        ax.add_patch(element)
+
+    return ax
+
+
+
+def draw_court(ax=None, color="black", lw=1, shotzone=False, outer_lines=False, flip=False):
     if ax is None:
         ax = plt.gca()
 
@@ -79,9 +153,7 @@ def draw_court(ax=None, color="black", lw=1, shotzone=False, outer_lines=False):
     corner_three_b = Rectangle((220, -47.5), 0, 140, linewidth=lw, color=color)
     three_arc = Arc((0, 0), 475, 475, theta1=22, theta2=158, linewidth=lw, color=color)
 
-    # Center Court
-    center_outer_arc = Arc((0, 422.5), 120, 120, theta1=180, theta2=0, linewidth=lw, color=color)
-    center_inner_arc = Arc((0, 422.5), 40, 40, theta1=180, theta2=0, linewidth=lw, color=color)
+
 
     # Draw shot zone Lines
     # Based on Advanced Zone Mode
@@ -107,16 +179,14 @@ def draw_court(ax=None, color="black", lw=1, shotzone=False, outer_lines=False):
         # List of the court elements to be plotted onto the axes
         court_elements = [hoop, backboard, outer_box, inner_box, top_free_throw,
                           bottom_free_throw, restricted, corner_three_a,
-                          corner_three_b, three_arc, center_outer_arc,
-                          center_inner_arc, inner_circle, outer_circle,
+                          corner_three_b, three_arc, inner_circle, outer_circle,
                           corner_three_a_x, corner_three_b_x,
                           inner_line_1, inner_line_2, inner_line_3, inner_line_4, inner_line_5, inner_line_6]
     else:
         # List of the court elements to be plotted onto the axes
         court_elements = [hoop, backboard, outer_box, inner_box, top_free_throw,
                           bottom_free_throw, restricted, corner_three_a,
-                          corner_three_b, three_arc, center_outer_arc,
-                          center_inner_arc]
+                          corner_three_b, three_arc]
 
     if outer_lines:
         # Draw the half court line, baseline and side out bound lines
@@ -131,6 +201,59 @@ def draw_court(ax=None, color="black", lw=1, shotzone=False, outer_lines=False):
 
 
 def shot_chart(data, player_name, year, title="", color="b",
+               xlim=(-250, 250), ylim=(422.5, -47.5), line_color="blue",
+               court_color="black", court_lw=2, outer_lines=False,
+               flip_court=True, gridsize=None,
+               ax=None, despine=False,
+               player_image_path='curry.png',  # ← New parameter
+               **kwargs):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 11))  # Ensure it draws a figure
+    else:
+        fig = ax.figure
+
+    if not flip_court:
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+    else:
+        ax.set_xlim(xlim[::-1])
+        ax.set_ylim(ylim[::-1])
+
+    ax.tick_params(labelbottom=False, labelleft=False)
+    ax.set_title(f'{player_name} {year} Shot Chart', fontsize=18)
+
+    # Draw court
+    draw_court_v2(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=True)
+
+    # Separate data by make or miss
+    x_missed = data[data['EVENT_TYPE'] == 'Missed Shot']['LOC_X']
+    y_missed = data[data['EVENT_TYPE'] == 'Missed Shot']['LOC_Y']
+
+    x_made = data[data['EVENT_TYPE'] == 'Made Shot']['LOC_X']
+    y_made = data[data['EVENT_TYPE'] == 'Made Shot']['LOC_Y']
+
+    # Plot missed and made shots
+    ax.scatter(x_missed, y_missed, c='r', marker="x", s=300, linewidths=3, **kwargs)
+    ax.scatter(x_made, y_made, facecolors='none', edgecolors='g', marker="o", s=100, linewidths=3, **kwargs)
+
+    # Set spines
+    for spine in ax.spines:
+        ax.spines[spine].set_lw(court_lw)
+        ax.spines[spine].set_color(line_color)
+
+    if despine:
+        for spine in ["top", "bottom", "right", "left"]:
+            ax.spines[spine].set_visible(False)
+
+    add_player_image_to_shot_chart(ax, player_image_path, player_name, xlim, ylim)
+    save_directory = 'shotcharts'
+    os.makedirs(save_directory, exist_ok=True)
+    file_name = os.path.join(save_directory, f"{player_name}_{year}_regular_season_shot_chart.png")
+    fig.savefig(file_name, dpi=300)
+    plt.close(fig)
+    return file_name
+
+def shot_chart_v2(data, player_name, year, title="", color="b",
                xlim=(-250, 250), ylim=(422.5, -47.5), line_color="blue",
                court_color="black", court_lw=2, outer_lines=False,
                flip_court=True, gridsize=None,
@@ -284,7 +407,89 @@ def hexbin_shot_chart(data, nba_player_name, year, title="", cmap='coolwarm', gr
     return file_name
 
 
-def hexmap_chart(data, league_avg, title="", color="b",
+def hexmap_chart(data, league_avg, nba_player_name,nba_season,title="", color="b",
+                 xlim=(-250, 250), ylim=(422.5, -47.5), line_color="black",
+                 court_color="#FFFFFF", court_lw=2, outer_lines=False,
+                 flip_court=False, gridsize=None,
+                 ax=None, despine=False, **kwargs):
+    ax, fig = create_figure_and_axis(ax, flip_court, title, xlim, ylim)
+    draw_court_v2(ax, color=line_color, lw=court_lw, outer_lines=outer_lines,flip=True)
+    data, player = get_player_data_and_calculate_league_average(data, league_avg)
+    boundaries, cmap = plot_nba_player_shot_chart_data_v2(ax, data, player)
+    create_shot_average_and_shot_frequency_legend(boundaries, cmap, fig)
+
+    # Set spines
+    for spine in ax.spines:
+        ax.spines[spine].set_lw(court_lw)
+        ax.spines[spine].set_color(line_color)
+
+    if despine:
+        ax.spines["top"].set_visible(False)
+        ax.spines["bottom"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["left"].set_visible(False)
+
+    # Add player image
+    season = nba_season
+    player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(str(nba_player_name))
+    nba_player_stat_columns = [
+        "AST", "BLK", "DREB", "FG3A", "FG3M", "FG3_PCT", "FGA", "FGM", "FG_PCT",
+        "FTA", "FTM", "FT_PCT", "MIN", "OREB", "PF", "PLUS_MINUS", "PTS", "REB", "STL", "TOV"]
+
+    nba_player_logs = playergamelog.PlayerGameLog(player_id=player_id,season=season,season_type_all_star='Playoffs').get_data_frames()[0]
+    nba_player_season_average = nba_player_logs[nba_player_stat_columns].mean().round(2).to_dict()
+    points = nba_player_season_average['PTS']
+    fg = nba_player_season_average['FG_PCT']
+    fg3 = nba_player_season_average['FG3_PCT']
+    plus_minus = nba_player_season_average['PLUS_MINUS']
+    assist = nba_player_season_average['AST']
+    blocks = nba_player_season_average['BLK']
+    rebounds = nba_player_season_average['REB']
+    steals = nba_player_season_average['STL']
+
+    add_player_image_to_chart(ax, player_id, xlim, ylim)
+
+    top_row_y_val = 0.90
+    bottom_row_y_val = 0.80
+    x_spacing = 0.15  # a bit more spacing for label next to value
+    x_start = 0.38
+
+    horizontal_label_offset = 0.015  # distance to right of the value
+    vertical_label_offset = -0.01
+
+    stat_values = [points, fg, fg3, assist, blocks, rebounds, steals, plus_minus]
+    stat_labels = ["PPG", "FG%", "3P%", "AST", "BLK", "REB", "STL", "+/-"]
+
+    for i, (val, label) in enumerate(zip(stat_values, stat_labels)):
+        row = 0 if i < 4 else 1
+        col = i % 4
+        x_val = x_start + col * x_spacing
+        y_val = top_row_y_val if row == 0 else bottom_row_y_val
+        x_label = x_val + horizontal_label_offset
+        y_label = y_val + vertical_label_offset
+
+        # Format value
+        if isinstance(val, float):
+            val_text = f"{val:.2f}".lstrip("0") if "%" in label else f"{val:.1f}"
+        else:
+            val_text = str(val)
+
+        fig.text(x_val, y_val, val_text, fontsize=35, fontweight='bold', ha='right', va='center', color='black')
+        fig.text(x_label, y_label, label, fontsize=10, color='gray', ha='left', va='center')
+
+    # Optional stat block title
+    fig.text(0.5, 0.96, f"{season} Regular Season Performance",
+             ha='center', va='top', fontsize=16, fontweight='bold')
+
+    # Save the chart
+    save_directory = 'shotcharts'
+    os.makedirs(save_directory, exist_ok=True)
+    file_name = os.path.join(save_directory, f"{nba_player_name}_{season}_hexmap_chart.png")
+    plt.savefig(file_name, dpi=300)
+    plt.close()
+    return file_name
+
+def hexmap_playoff_chart(data, league_avg, nba_player_name,title="", color="b",
                  xlim=(-250, 250), ylim=(422.5, -47.5), line_color="black",
                  court_color="#FFFFFF", court_lw=2, outer_lines=False,
                  flip_court=False, gridsize=None,
@@ -307,14 +512,13 @@ def hexmap_chart(data, league_avg, title="", color="b",
         ax.spines["left"].set_visible(False)
 
     # Add player image
-    player_name = "Shai Gilgeous-Alexander"
     season = "2024-25"
-    player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(str(player_name))
+    player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(str(nba_player_name))
     nba_player_stat_columns = [
         "AST", "BLK", "DREB", "FG3A", "FG3M", "FG3_PCT", "FGA", "FGM", "FG_PCT",
         "FTA", "FTM", "FT_PCT", "MIN", "OREB", "PF", "PLUS_MINUS", "PTS", "REB", "STL", "TOV"]
 
-    nba_player_logs = playergamelog.PlayerGameLog(player_id=player_id,season=season).get_data_frames()[0]
+    nba_player_logs = playergamelog.PlayerGameLog(player_id=player_id,season=season,  season_type_all_star='Playoffs').get_data_frames()[0]
     nba_player_season_average = nba_player_logs[nba_player_stat_columns].mean().round(2).to_dict()
     points = nba_player_season_average['PTS']
     fg = nba_player_season_average['FG_PCT']
@@ -330,53 +534,47 @@ def hexmap_chart(data, league_avg, title="", color="b",
     # Coordinates depend on your court dimensions – adjust as needed
     stat_x = 130  # near the right side outside the court
     stat_y = 50  # vertical position
-    fig.text(0.91, 0.85, f"{points:.1f}", fontsize=25, fontweight='bold',
-             ha='left', va='center', color='black')
-    fig.text(0.97, 0.845, "PPG", fontsize=10, color='gray', va='center')
 
-    # FG%
-    fig.text(0.91, 0.75, f"{fg:.2f}".lstrip("0"), fontsize=25, fontweight='bold',
-             ha='left', va='center', color='black')
-    fig.text(0.97, 0.745, "FG%", fontsize=10, color='gray', va='center')
+    # Horizontal and vertical positioning
+    # Two-line stat layout
+    top_row_y_val = 0.90
+    top_row_y_label = 0.85
+    bottom_row_y_val = 0.80
+    bottom_row_y_label = 0.75
+    x_spacing = 0.1
+    x_start = 0.35
 
-    fig.text(0.91, 0.65, f"{fg3:.2f}".lstrip("0"), fontsize=25, fontweight='bold',
-             ha='left', va='center', color='black')
-    fig.text(0.97, 0.645, "3P%", fontsize=10, color='gray', va='center')
+    stat_values = [points, fg, fg3, assist, blocks, rebounds, steals, plus_minus]
+    stat_labels = ["PPG", "FG%", "3P%", "AST", "BLK", "REB", "STL", "+/-"]
 
-    fig.text(0.91, 0.55, f"{assist:.1f}".lstrip("0"), fontsize=25, fontweight='bold',
-             ha='left', va='center', color='black')
-    fig.text(0.97, 0.545, "AST", fontsize=10, color='gray', va='center')
+    for i, (val, label) in enumerate(zip(stat_values, stat_labels)):
+        row = 0 if i < 4 else 1
+        col = i % 4
+        x = x_start + col * x_spacing
+        y_val = top_row_y_val if row == 0 else bottom_row_y_val
+        y_label = top_row_y_label if row == 0 else bottom_row_y_label
 
-    fig.text(0.91, 0.45, f"{blocks:.1f}".lstrip("0"), fontsize=25, fontweight='bold',
-             ha='left', va='center', color='black')
-    fig.text(0.97, 0.445, "BLK", fontsize=10, color='gray', va='center')
+        # Format value
+        if isinstance(val, float):
+            val_text = f"{val:.2f}".lstrip("0") if "%" in label else f"{val:.1f}"
+        else:
+            val_text = str(val)
 
-    fig.text(0.91, 0.35, f"{rebounds:.1f}".lstrip("0"), fontsize=25, fontweight='bold',
-             ha='left', va='center', color='black')
-    fig.text(0.97, 0.345, "RBD", fontsize=10, color='gray', va='center')
+        fig.text(x, y_val, val_text, fontsize=25, fontweight='bold', ha='center', va='center', color='black')
+        fig.text(x, y_label, label, fontsize=10, color='gray', ha='center', va='center')
 
-    fig.text(0.91, 0.25, f"{steals:.1f}".lstrip("0"), fontsize=25, fontweight='bold',
-             ha='left', va='center', color='black')
-    fig.text(0.97, 0.245, "STL", fontsize=10, color='gray', va='center')
-
-    # Plus/Minus
-    fig.text(0.91, 0.15, f"{plus_minus:.2f}", fontsize=25, fontweight='bold',
-             ha='left', va='center', color='black')
-    fig.text(0.98, 0.145, "+/-", fontsize=10, color='gray', va='center')
-    fig.text(0.5, 0.94, f"{player_name}", fontsize=30, fontweight='bold', ha='center',va='top')
-    fig.text(0.5, 0.97, f"{season} Shooting Performance",
+    # Optional section header
+    fig.text(0.5, 0.96, f"{season} Regular Season Performance",
              ha='center', va='top', fontsize=16, fontweight='bold')
-
-
-
 
     # Save the chart
     save_directory = 'shotcharts'
     os.makedirs(save_directory, exist_ok=True)
-    file_name = os.path.join(save_directory, f"{player_name}_{season}_hexmap_chart.png")
+    file_name = os.path.join(save_directory, f"{nba_player_name}_{season}_hexmap_playoff_chart.png")
     plt.savefig(file_name, dpi=300)
     plt.close()
     return file_name
+
 
 
 def plot_nba_player_shot_chart_data(ax, data, player):
@@ -417,6 +615,65 @@ def plot_nba_player_shot_chart_data(ax, data, player):
                     weight='bold')
     return boundaries, cmap
 
+from matplotlib.colors import ListedColormap, BoundaryNorm
+
+def plot_nba_player_shot_chart_data_v2(ax, data, player):
+    flip = True  # Set this to False if you don't want a flipped court
+
+    def flip_y(val):
+        return 422.5 - val if flip else val
+
+    # Flip y if needed
+    x = data['LOC_X']
+    y = data['LOC_Y'].apply(flip_y) if flip else data['LOC_Y']
+
+    colors = ["#00008C", "#4467C4", "#ADD8E6", "#FFFF00", "#FF5C00", "#ff0000"]
+    cmap = ListedColormap(colors)
+    boundaries = [-100, -9, -3, 0, 3, 9, 100]
+    norm = BoundaryNorm(boundaries, cmap.N, clip=True)
+
+    extent = [-275, 275, flip_y(425), flip_y(-50)] if flip else [-275, 275, -50, 425]
+
+    hexbin = ax.hexbin(x, y, gridsize=40, cmap=cmap, norm=norm, extent=extent)
+    hexbin2 = ax.hexbin(x, y, C=data['FGP_DIFF'], gridsize=40, cmap=cmap, norm=norm, extent=extent)
+
+    sized_hexbin(ax, hexbin, hexbin2, cmap, norm)
+
+    # Define shot zones with adjusted y-coordinates
+    zone_mapping = {
+        ('Center(C)', 'Less Than 8 ft.'): ('Restricted Area', (0, flip_y(20))),
+        ('Center(C)', '8-16 ft.'): ('In The Paint (Non-RA)', (0, flip_y(80))),
+        ('Center(C)', '16-24 ft.'): ('Mid-Range (Center)', (0, flip_y(180))),
+        ('Left Side Center(LC)', '16-24 ft.'): ('Mid-Range (Left)', (-100, flip_y(150))),
+        ('Right Side Center(RC)', '16-24 ft.'): ('Mid-Range (Right)', (100, flip_y(150))),
+        ('Left Side(L)', '24+ ft.'): ('Left Corner 3', (-220, flip_y(20))),
+        ('Right Side(R)', '24+ ft.'): ('Right Corner 3', (220, flip_y(20))),
+        ('Center(C)', '24+ ft.'): ('Above the Break 3 (Center)', (0, flip_y(280))),
+        ('Left Side Center(LC)', '24+ ft.'): ('Above the Break 3 (Left)', (-150, flip_y(250))),
+        ('Right Side Center(RC)', '24+ ft.'): ('Above the Break 3 (Right)', (150, flip_y(250))),
+    }
+
+    # Calculate FG% for each zone
+    zone_fgp = {}
+    for (area, range_), (zone_name, _) in zone_mapping.items():
+        if (area, range_) in player.index:
+            fgp = player.loc[(area, range_), 'FGP'] * 100
+            zone_fgp[zone_name] = {
+                'FGP': fgp,
+                'FGM': player.loc[(area, range_), 'Makes'],
+                'FGA': player.loc[(area, range_), 'FGA']
+            }
+
+    # Draw FG% annotations
+    for (area, range_), (zone_name, (x_center, y_center)) in zone_mapping.items():
+        if zone_name in zone_fgp and zone_fgp[zone_name]['FGA'] > 0:
+            fgp = zone_fgp[zone_name]['FGP']
+            ax.text(x_center, y_center, f'{fgp:.0f}%', ha='center', va='center',
+                    fontsize=20, color='black', weight='bold')
+
+    return boundaries, cmap
+
+
 
 def get_player_data_and_calculate_league_average(data, league_avg):
     LA = (league_avg.loc[:, ['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'FGA', 'FGM']]
@@ -439,7 +696,9 @@ def add_player_image_to_chart(ax, player_id, xlim, ylim):
     try:
         img = Image.open(BytesIO(requests.get(url).content)).convert("RGB")
         imagebox = OffsetImage(img, zoom=.5)
-        ab = AnnotationBbox(imagebox, (xlim[0], ylim[1]), frameon=False)
+        # Coordinates in axes fraction (0 = left/bottom, 1 = right/top)
+        ab = AnnotationBbox(imagebox, (0, 1.15), xycoords='axes fraction',
+                            frameon=False, box_alignment=(0, 1))
         ax.add_artist(ab)
     except Exception as e:
         print(f"Could not load image for player {player_id}: {e}")
@@ -488,7 +747,7 @@ def create_shot_average_and_shot_frequency_legend(boundaries, cmap, fig):
         x += radius * 2 * math.cos(math.pi / 6) + 0.05  # spacing between hexes
     # Add text label below the hex legend
     grow_legend_ax.text(2 * x / len(labels), -0.4, 'Frequency', ha='center', va='center',
-                            fontsize=12, color='gray', fontstyle='normal', fontweight='normal',
+                            fontsize=14, color='gray', fontstyle='normal', fontweight='normal',
                             fontfamily='Arial')
     grow_legend_ax.set_xlim(-0.5, x + 0.5)
     grow_legend_ax.set_ylim(-0.5, 1)
@@ -510,7 +769,7 @@ def create_shot_average_and_shot_frequency_legend(boundaries, cmap, fig):
             freq_legend_ax.text(x, 0, label, ha='center', va='center', fontsize=8, color='gray',
                                 fontstyle='normal', fontweight='bold', fontfamily='Arial')
             freq_legend_ax.text(2.5 * spacing, -0.4, 'Efficiency', ha='center', va='center',
-                                fontsize=12, color='gray', fontweight='normal', fontfamily='Arial')
+                                fontsize=16, color='gray', fontweight='normal', fontfamily='Arial')
     freq_legend_ax.set_xlim(-0.5, x + spacing)
     freq_legend_ax.set_ylim(-0.5, 1)
 
@@ -528,6 +787,7 @@ def create_figure_and_axis(ax, flip_court, title, xlim, ylim):
         ax.set_ylim(ylim[::-1])
     ax.tick_params(labelbottom="off", labelleft="off")
     ax.set_title(title, fontsize=18)
+    ax.axis('off')
     return ax, fig
 
 
@@ -652,20 +912,26 @@ def heatmap(data, title="", color="b",
     plt.close()
 
 
-player_name = "Shai Gilgeous-Alexander"
-season = "2024-25"
+player_name = "Kyrie Irving"
+season = "2023-24"
 # game_id = '0042400111'
 
 
 shot_df, _ = get_player_shot_chart_detail(player_name, season)
+shot_df_playoff, _ = get_player_playoff_shot_chart_detail(player_name, season)
 shot_chart(shot_df, player_name, season)
 chart_path = hexbin_shot_chart(shot_df, player_name, season)
 hexbin_shot_chart(shot_df, player_name, season)
 player_shotchart_df, league_avg = get_player_shot_chart_detail(player_name, season)
+player_playoff_shotchart_df, playoff_leage_avg = get_player_playoff_shot_chart_detail(player_name,season)
 
 # df = get_player_sper_game_shot_chart(player_name,season,game_id)
 # shot_chart(df, player_name, season)
-hexmap_chart(player_shotchart_df, league_avg)
+hexmap_chart(player_shotchart_df, league_avg, player_name, season)
+hexmap_playoff_chart(player_playoff_shotchart_df, playoff_leage_avg, player_name)
+
+
+heatmap(player_shotchart_df)
 
 
 def create_hexmap_per_season(player_name, season):
