@@ -156,6 +156,7 @@ PostGame Stats is a **Flask-based REST API** that provides free access to compre
 
 ## Contributions  
 Contributions are welcome! Feel free to submit issues or create pull requests to improve the API.  
+Follow the project on X - https://x.com/postgamestats
 
 ## License  
 This project is licensed under the MIT License.  
