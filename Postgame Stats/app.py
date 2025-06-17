@@ -1,4 +1,5 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
+# import nfl_data_py as nfl
 import NbaPlayerStats
 import TeamStats
 import ShotChartUtil
@@ -73,7 +74,7 @@ def player_any_season_stats():
 def nba_player_season_averages():
     player_name = request.get_json()['playerName']
     year = request.get_json()['season']
-    return NbaPlayerStats.get_player_stats(player_name, year)
+    return NbaPlayerStats.get_player_stats_per_season(player_name, year)
 
 
 @require_json
@@ -133,7 +134,7 @@ def player_short_chart():
 def player_regular_season_short_chart():
     player_name = request.get_json()['playerName']
     season = request.get_json()['season']
-    ShotChartUtil.create_player_season_shot_chart_hexmap_heatmap(player_name, season)
+    ShotChartUtil.create_player_regular_season_hexmap_shot_chart(player_name, season)
     return "shot chart creation is successful"
 
 
@@ -143,7 +144,25 @@ def player_regular_season_short_chart():
 def player_regular_season_hex_map():
     player_name = request.get_json()['playerName']
     season = request.get_json()['season']
-    return ShotChartUtil.create_hexmap_per_season(player_name, season)
+    return ShotChartUtil.create_player_regular_season_hexmap_shot_chart(player_name, season)
+
+@require_json
+@handle_exceptions
+@app.route('/api/nba/player/playoffsHexmap', methods=['POST'])
+def player_playoffs_hexmap():
+    player_name = request.get_json()['playerName']
+    season = request.get_json()['season']
+    return ShotChartUtil.create_player_playoffs_hexmap_shot_chart(player_name, season)
+
+
+@require_json
+@handle_exceptions
+@app.route('/api/nba/player/finalsPerGameHexmap', methods=['POST'])
+def player_finals_per_game_hexmap():
+    player_name = request.get_json()['playerName']
+    season = request.get_json()['season']
+    game_id = request.get_json()['gameid']
+    return ShotChartUtil.create_player_playoffs_finals_per_game_hexmap_shot_chart(player_name, season, game_id)
 
 
 @require_json
