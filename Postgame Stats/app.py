@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify
-# import nfl_data_py as nfl
 import NbaPlayerStats
 import TeamStats
 import ShotChartUtil
@@ -210,6 +209,36 @@ def team_playoff_average_stats():
     team_name = data.get('teamName', '')
     season = request.get_json()['season']
     return TeamStats.get_team_playoff_stats(team_name, season)
+
+@require_json
+@handle_exceptions
+@app.route('/api/nba/team/seasonHexmapShotChart', methods=['POST'])
+def team_season_hexmap_shotchart():
+    data = request.get_json()
+    team_name = data.get('teamName', '')
+    season = request.get_json()['season']
+    return ShotChartUtil.create_team_hexmap_per_season(team_name, season)
+
+@require_json
+@handle_exceptions
+@app.route('/api/nba/team/playoffsHexmapShotChart', methods=['POST'])
+def team_playoff_hexmap_shotchart():
+    data = request.get_json()
+    team_name = data.get('teamName', '')
+    season = request.get_json()['season']
+    return ShotChartUtil.create_team_playoff_hexmap_per_season(team_name, season)
+
+@require_json
+@handle_exceptions
+@app.route('/api/nba/team/finalsPerGameHexmapShotChart', methods=['POST'])
+def team_playoff_finals_per_game_hexmap_shotchart():
+    data = request.get_json()
+    team_name = data.get('teamName', '')
+    season = request.get_json()['season']
+    game_id = request.get_json()['gameId']
+    return ShotChartUtil.create_team_playoffs_finals_per_game_hexmap_shot_chart(team_name, season, game_id)
+
+
 
 
 if __name__ == '__main__':
