@@ -3,6 +3,8 @@
 
 PostGame Stats is a **Flask-based REST API** that provides free access to comprehensive **NBA statistics**. The API offers detailed player and team data, as well as visualized shot charts, making it an ideal resource for analysts, developers, and basketball enthusiasts looking to integrate NBA stats into their projects.  
 
+Follow the project on X - https://x.com/postgamestats
+
 ## Features  
 - **Player Statistics**: Access player performance metrics, including points, rebounds, assists, and more.  
 - **Team Statistics**: Retrieve team-level data such as standings, win-loss records, and advanced stats.  
