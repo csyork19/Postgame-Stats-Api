@@ -20,38 +20,6 @@ def player_id():
 
 @require_json
 @handle_exceptions
-@app.route('/api/wnba/player/id', methods=['POST'])
-def wnba_player_id():
-    player_name = request.get_json()['playerName']
-    return PostGameStatsUtil.PostGameStatsUtil.get_wnba_player_id(player_name)
-
-
-@require_json
-@handle_exceptions
-@app.route('/api/wnba/player/seasonStats', methods=['POST'])
-def wnba_player_season_stats():
-    player_name = request.get_json()['playerName']
-    return NbaPlayerStats.get_wnba_player_season_stats(player_name)
-
-
-@require_json
-@handle_exceptions
-@app.route('/api/gleague/player/id', methods=['POST'])
-def gleague_player_id():
-    player_name = request.get_json()['playerName']
-    return PostGameStatsUtil.PostGameStatsUtil.get_gleague_player_id(player_name)
-
-
-@require_json
-@handle_exceptions
-@app.route('/api/gleague/player/seasonStats', methods=['POST'])
-def gleague_player_season_stats():
-    player_name = request.get_json()['playerName']
-    return NbaPlayerStats.get_glegaue_player_season_stats(player_name)
-
-
-@require_json
-@handle_exceptions
 @app.route('/api/nba/player/seasonStats', methods=['POST'])
 def player_season_stats():
     player_name = request.get_json()['playerName']
@@ -78,14 +46,6 @@ def nba_player_season_averages():
 
 @require_json
 @handle_exceptions
-@app.route('/api/nba/player/seasonAverages', methods=['POST'])
-def player_season_average_stats():
-    player_name = request.get_json()['playerName']
-    return NbaPlayerStats.get_player_season_average(player_name)
-
-
-@require_json
-@handle_exceptions
 @app.route('/api/nba/player/careerStats', methods=['POST'])
 def player_career_stats():
     player_name = request.get_json()['playerName']
@@ -99,16 +59,6 @@ def player_playoff_stats():
     player_name = request.get_json()['playerName']
     season = request.get_json()['season']
     return NbaPlayerStats.get_player_playoff_stats(player_name, season)
-
-
-@require_json
-@handle_exceptions
-@app.route('/api/nba/player/playoffStatsAverage', methods=['POST'])
-def player_playoff_average_stats():
-    player_name = request.get_json()['playerName']
-    season = request.get_json()['season']
-    return NbaPlayerStats.get_player_playoff_stats(player_name, season)
-
 
 @require_json
 @handle_exceptions
@@ -139,20 +89,25 @@ def player_regular_season_short_chart():
 
 @require_json
 @handle_exceptions
-@app.route('/api/nba/player/regularSeasonHexmap', methods=['POST'])
-def player_regular_season_hex_map():
+@app.route('/api/nba/player/updatedRegularSeasonHexmap', methods=['POST'])
+def updated_player_regular_season_hex_map():
     player_name = request.get_json()['playerName']
     season = request.get_json()['season']
-    return ShotChartUtil.create_player_regular_season_hexmap_shot_chart(player_name, season)
+    season_type = request.get_json()['seasonType']
+    game_id = request.get_json()['gameId']
+    return ShotChartUtil.create_updated_player_regular_season_hexmap_shot_chart(player_name, season, season_type,
+                                                                                game_id)
+
 
 @require_json
 @handle_exceptions
-@app.route('/api/nba/player/playoffsHexmap', methods=['POST'])
-def player_playoffs_hexmap():
-    player_name = request.get_json()['playerName']
+@app.route('/api/nba/team/updatedRegularSeasonHexmap', methods=['POST'])
+def updated_team_regular_season_hex_map():
+    team_name = request.get_json()['teamName']
     season = request.get_json()['season']
-    return ShotChartUtil.create_player_playoffs_hexmap_shot_chart(player_name, season)
-
+    season_type = request.get_json()['seasonType']
+    game_id = request.get_json()['gameId']
+    return ShotChartUtil.create_team_hexmap_per_season(team_name, season, season_type, game_id)
 
 @require_json
 @handle_exceptions
@@ -162,13 +117,6 @@ def player_finals_per_game_hexmap():
     season = request.get_json()['season']
     game_id = request.get_json()['gameid']
     return ShotChartUtil.create_player_playoffs_finals_per_game_hexmap_shot_chart(player_name, season, game_id)
-
-
-@require_json
-@handle_exceptions
-@app.route('/api/nba/player/leagueLeaders', methods=['POST'])
-def player_league_leaders():
-    return PostGameStatsUtil.PostGameStatsUtil.get_league_leaders(request)
 
 
 @require_json
@@ -210,23 +158,6 @@ def team_playoff_average_stats():
     season = request.get_json()['season']
     return TeamStats.get_team_playoff_stats(team_name, season)
 
-@require_json
-@handle_exceptions
-@app.route('/api/nba/team/seasonHexmapShotChart', methods=['POST'])
-def team_season_hexmap_shotchart():
-    data = request.get_json()
-    team_name = data.get('teamName', '')
-    season = request.get_json()['season']
-    return ShotChartUtil.create_team_hexmap_per_season(team_name, season)
-
-@require_json
-@handle_exceptions
-@app.route('/api/nba/team/playoffsHexmapShotChart', methods=['POST'])
-def team_playoff_hexmap_shotchart():
-    data = request.get_json()
-    team_name = data.get('teamName', '')
-    season = request.get_json()['season']
-    return ShotChartUtil.create_team_playoff_hexmap_per_season(team_name, season)
 
 @require_json
 @handle_exceptions
@@ -238,7 +169,36 @@ def team_playoff_finals_per_game_hexmap_shotchart():
     game_id = request.get_json()['gameId']
     return ShotChartUtil.create_team_playoffs_finals_per_game_hexmap_shot_chart(team_name, season, game_id)
 
+@require_json
+@handle_exceptions
+@app.route('/api/wnba/player/id', methods=['POST'])
+def wnba_player_id():
+    player_name = request.get_json()['playerName']
+    return PostGameStatsUtil.PostGameStatsUtil.get_wnba_player_id(player_name)
 
+
+@require_json
+@handle_exceptions
+@app.route('/api/wnba/player/seasonStats', methods=['POST'])
+def wnba_player_season_stats():
+    player_name = request.get_json()['playerName']
+    return NbaPlayerStats.get_wnba_player_season_stats(player_name)
+
+
+@require_json
+@handle_exceptions
+@app.route('/api/gleague/player/id', methods=['POST'])
+def gleague_player_id():
+    player_name = request.get_json()['playerName']
+    return PostGameStatsUtil.PostGameStatsUtil.get_gleague_player_id(player_name)
+
+
+@require_json
+@handle_exceptions
+@app.route('/api/gleague/player/seasonStats', methods=['POST'])
+def gleague_player_season_stats():
+    player_name = request.get_json()['playerName']
+    return NbaPlayerStats.get_glegaue_player_season_stats(player_name)
 
 
 if __name__ == '__main__':
