@@ -1,22 +1,15 @@
 import json
 import pandas as pd
 from nba_api.stats.endpoints import leagueleaders, shotchartdetail, CommonAllPlayers
+from nba_api.stats.static import players
 
 
 class PostGameStatsUtil:
     def get_player_id(self):
-        nba_players = leagueleaders.LeagueLeaders(season='2024-25',
-                                                  season_type_all_star='Regular Season',
-                                                  stat_category_abbreviation='PTS').get_data_frames()[0][:600]
-
-        avg_stats_columns = ['MIN']
-        sorted_nba_players = nba_players.groupby(['PLAYER', 'PLAYER_ID'])[avg_stats_columns].mean()
-        df = sorted_nba_players.reset_index()[['PLAYER', 'PLAYER_ID']]
-
-        # Find the player ID for the given player name
-        player_df = df[['PLAYER', 'PLAYER_ID']]
-        players_id = player_df[player_df['PLAYER'] == self]['PLAYER_ID'].iloc[0]
-        return players_id
+        nba_players = players.get_players()
+        player_dict = [player for player in nba_players if player['full_name'] == self][0]
+        player_id = player_dict['id']
+        return player_id
 
     def get_player_season_shot_chart(self, season):
         shot_chart_data = shotchartdetail.ShotChartDetail(
