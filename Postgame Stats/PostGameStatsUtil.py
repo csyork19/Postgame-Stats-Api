@@ -1,4 +1,6 @@
 import json
+import sqlite3
+
 import pandas as pd
 from nba_api.stats.endpoints import leagueleaders, shotchartdetail, CommonAllPlayers
 from nba_api.stats.static import players
@@ -6,10 +8,21 @@ from nba_api.stats.static import players
 
 class PostGameStatsUtil:
     def get_player_id(self):
-        nba_players = players.get_players()
-        player_dict = [player for player in nba_players if player['full_name'] == self][0]
-        player_id = player_dict['id']
-        return player_id
+        db_path = "/Users/stormyork/Documents/NBA Information.db"
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+
+        # Case-insensitive match
+        cur.execute("""
+            SELECT player_id
+            FROM nba_players_2
+            WHERE LOWER(full_name) = LOWER(?)
+        """, (self,))
+
+        result = cur.fetchone()
+        conn.close()
+        return str(result[0])
+
 
     def get_player_season_shot_chart(self, season):
         shot_chart_data = shotchartdetail.ShotChartDetail(
@@ -62,22 +75,22 @@ class PostGameStatsUtil:
 
 
 def get_league_leaders(self):
-        top_700 = leagueleaders.LeagueLeaders(season='2023-24', season_type_all_star='Regular Season',
-                                              stat_category_abbreviation='PTS').get_data_frames()[0][:600]
+    top_700 = leagueleaders.LeagueLeaders(season='2023-24', season_type_all_star='Regular Season',
+                                          stat_category_abbreviation='PTS').get_data_frames()[0][:600]
 
-        df_points_leaders = None
-        df_rebounds_leaders = None
-        df_blocks_leaders = None
+    df_points_leaders = None
+    df_rebounds_leaders = None
+    df_blocks_leaders = None
 
-        stats_columns = ["REB", "PTS", "STL", "BLK", "AST"]
-        top_stats = {}
+    stats_columns = ["REB", "PTS", "STL", "BLK", "AST"]
+    top_stats = {}
 
-        # Loop through each stat, sort, and extract top 5 players
-        for stat in stats_columns:
-            # Sort by the current stat in descending order
-            top_players = top_700.sort_values(by=stat, ascending=False).head(5)
-            # Add the result to the dictionary
-            top_stats[stat] = top_players[["PLAYER", stat]]  # Include player names and the stat
+    # Loop through each stat, sort, and extract top 5 players
+    for stat in stats_columns:
+        # Sort by the current stat in descending order
+        top_players = top_700.sort_values(by=stat, ascending=False).head(5)
+        # Add the result to the dictionary
+        top_stats[stat] = top_players[["PLAYER", stat]]  # Include player names and the stat
 
-        df = pd.DataFrame([top_stats])
-        return df.to_json(orient='records')
+    df = pd.DataFrame([top_stats])
+    return df.to_json(orient='records')
