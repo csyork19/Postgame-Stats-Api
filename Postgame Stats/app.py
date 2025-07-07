@@ -1,10 +1,14 @@
 from flask import Flask, request
+from nba_api.stats.endpoints import BoxScoreDefensiveV2
+
 import NbaPlayerStats
 import TeamStats
 import ShotChartUtil
 import PostGameStatsUtil
 from flask_cors import CORS
 from descriptors.errors import handle_exceptions, require_json
+import logging
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
@@ -15,7 +19,9 @@ CORS(app)
 @app.route('/api/nba/player/id', methods=['POST'])
 def get_player_id():
     player_name = request.get_json()['playerName']
-    return PostGameStatsUtil.PostGameStatsUtil.get_player_id(player_name)
+    logger.info("retrieving NBA player id")
+    player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(player_name)
+    return player_id
 
 
 @require_json
@@ -24,6 +30,28 @@ def get_player_id():
 def get_player_season_stats():
     player_name = request.get_json()['playerName']
     return NbaPlayerStats.get_player_stats(player_name)
+
+
+@require_json
+@handle_exceptions
+@app.route('/api/nba/player/advancedSeasonStats', methods=['POST'])
+def get_player_advanced_season_stats():
+    player_name = request.get_json()['playerName']
+    season = request.get_json()['season']
+    season_type = request.get_json()['seasonType']
+    game_id = request.get_json()['gameId']
+    return NbaPlayerStats.get_player_advanced_stats_for_season(player_name,season,season_type)
+
+@require_json
+@handle_exceptions
+@app.route('/api/nba/player/advancedAverageSeasonStats', methods=['POST'])
+def get_player_average_advanced_season_stats():
+    player_name = request.get_json()['playerName']
+    season = request.get_json()['season']
+    season_type = request.get_json()['seasonType']
+    game_id = request.get_json()['gameId']
+    return NbaPlayerStats.get_player_average_advanced_stats_for_season(player_name,season,season_type)
+
 
 
 @require_json
@@ -46,7 +74,7 @@ def get_nba_player_season_averages():
 
 @require_json
 @handle_exceptions
-@app.route('/api/nba/player/careerStats', methods=['POST'])
+@app.route('/api/nba/player/careerSeasonTotal', methods=['POST'])
 def get_player_career_stats():
     player_name = request.get_json()['playerName']
     return NbaPlayerStats.get_player_career_stats(player_name)
@@ -129,6 +157,7 @@ def get_team_season_stats():
     data = request.get_json()
     team_name = data.get('teamName', '')
     season = request.get_json()['season']
+    app.logger.info(f"********** GETTING TEAM STATS FOR TEAM - {team_name} **********")
     return TeamStats.get_team_season_stats(team_name, season)
 
 
