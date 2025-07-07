@@ -1,9 +1,9 @@
+from datetime import time
 from io import BytesIO
-import pandas as pd
 import requests
 from scipy.stats import percentileofscore
 from nba_api.stats.static import players
-from nba_api.stats.endpoints import playergamelog, shotchartdetail, leaguegamefinder, playercareerstats
+from nba_api.stats.endpoints import playergamelog, playercareerstats
 import seaborn as sns
 from matplotlib.collections import PatchCollection
 from matplotlib.path import Path
@@ -12,11 +12,18 @@ import PostGameStatsUtil
 from matplotlib.patches import RegularPolygon
 import numpy as np
 import matplotlib.patches as mpatches
-import matplotlib.pyplot as plt
-import os
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from PIL import Image
+from nba_api.stats.endpoints import shotchartdetail
+from tqdm import tqdm  # for progress bar
+from nba_api.stats.endpoints import leaguegamefinder
+from nba_api.stats.endpoints import teamgamelog
+from nba_api.stats.static import teams
+import pandas as pd
+import time
+import matplotlib.pyplot as plt
+import os
 
 sns.set_style('white')
 sns.set_color_codes()
@@ -24,6 +31,67 @@ plt.switch_backend('Agg')
 pd.options.display.max_columns = None
 
 global player_id
+
+team_logo_images = {
+    "Philadelphia 76ers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/76ers.png",
+    "Atlanta Hawks": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/atlanta.png",
+    "Boston Celtics": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/boston.png",
+    "Brooklyn Nets": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/brooklyn.png",
+    "Milwaukee Bucks": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/bucks.png",
+    "Chicago Bulls": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/bulls.png",
+    "Cleveland Cavaliers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/cavs.png",
+    "Los Angeles Clippers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/clippers.png",
+    "Memphis Grizzlies": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/grizzlies.png",
+    "Miami Heat": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/heat.png",
+    "Charlotte Hornets": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/hornets.png",
+    "Utah Jazz": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/jazz.png",
+    "Sacramento Kings": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/kings.png",
+    "New York Knicks": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/knicks.png",
+    "Los Angeles Lakers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/lakers.png",
+    "Orlando Magic": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/magic.png",
+    "Dallas Mavericks": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/mavericks.png",
+    "Denver Nuggets": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/nuggets.png",
+    "Indiana Pacers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/pacers.png",
+    "New Orleans Pelicans": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/pelicans.png",
+    "Detroit Pistons": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/pistons.png",
+    "Toronto Raptors": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/raptors.png",
+    "Houston Rockets": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/rockets.png",
+    "San Antonio Spurs": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/spurs.png",
+    "Phoenix Suns": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/suns.png",
+    "Oklahoma City Thunder": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/thunder.png",
+    "Trae Young": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/t_young.png"
+}
+
+
+def get_team_games(team_name, season_id):
+    nba_teams = teams.get_teams()
+    team_id = [team['id'] for team in nba_teams if team['full_name'] == team_name][0]
+    game_finder = leaguegamefinder.LeagueGameFinder(team_id_nullable=team_id, season_nullable=season_id)
+    games = game_finder.get_data_frames()[0]
+    return games[['GAME_ID', 'MATCHUP']]
+
+
+def get_opponent_shots_against_team(team_name, season_id, season_type='Regular Season'):
+    games = get_team_games(team_name, season_id)
+    nba_teams = teams.get_teams()
+    team_id = [team['id'] for team in nba_teams if team['full_name'] == team_name][0]
+
+    all_opponent_shots = []
+    for _, row in tqdm(games.iterrows(), total=len(games)):
+        game_id = row['GAME_ID']
+        matchup = row['MATCHUP']
+        is_home_game = team_name in matchup.split(" ")[0]
+        shots = shotchartdetail.ShotChartDetail(
+            team_id=0,
+            player_id=0,
+            game_id_nullable=game_id,
+            season_type_all_star=season_type,
+            context_measure_simple="FGA"
+        ).get_data_frames()[0]
+        opponent_shots = shots[shots['TEAM_ID'] != team_id]
+        all_opponent_shots.append(opponent_shots)
+    full_df = pd.concat(all_opponent_shots, ignore_index=True)
+    return full_df
 
 
 def get_player_shot_chart_detail_updated(player_name, season_id, season_type, game_id):
@@ -130,8 +198,7 @@ def draw_court_v2(ax=None, color="white", lw=1, shotzone=False, outer_lines=Fals
     from matplotlib.patches import Circle, Rectangle, Arc
     if ax is None:
         ax = plt.gca()
-
-    OFFSET_Y = 95  # Vertical offset to prevent bottom clipping
+    OFFSET_Y = 95
 
     def adjust_y(y):
         if flip:
@@ -381,7 +448,7 @@ def team_hexmap_chart(data, league_avg, nba_team_name, nba_season, season_type, 
 
     assist, blocks, fg, fg3, team_id, points, rebounds, steals = add_team_stats_to_shot_chart(nba_team_name, nba_season,
                                                                                               season_type)
-    add_team_image_to_chart(ax, team_id, xlim, ylim)
+    add_team_image_to_chart(ax, nba_team_name, team_id, xlim, ylim)
 
     add_team_shot_chart_header_info(assist, blocks, fg, fg3, fig, points, rebounds, nba_season, steals,
                                     nba_team_name, season_type, "black")
@@ -394,6 +461,71 @@ def team_hexmap_chart(data, league_avg, nba_team_name, nba_season, season_type, 
     else:
         file_name = os.path.join(save_directory,
                                  f"{nba_team_name}_{nba_season}_{season_type}_regular_season_hexmap_chart.png")
+
+    plt.savefig(file_name, dpi=300, bbox_inches=None, pad_inches=0)
+    plt.close()
+    return file_name
+
+
+def team_defense_hexmap_chart(data, league_avg, nba_team_name, nba_season, season_type, game_id, title="", color="b",
+                              xlim=(-250, 250), ylim=None, line_color="black",
+                              court_color="#FFFFFF", court_lw=2, outer_lines=False,
+                              flip_court=True, gridsize=None,
+                              ax=None, despine=False, **kwargs):
+    # 1. Set default y-axis limits
+    ylim = (470, -60)  # Original court orientation (hoop at y=0)
+
+    # 2. Flip shot data if needed (to match court orientation)
+    if flip_court:
+        data = data.copy()
+        data['LOC_Y'] = 422.5 - data['LOC_Y']
+
+    # 3. Create figure and axis
+    ax, fig = create_figure_and_axis(ax, flip_court, title, xlim, ylim)
+
+    # 4. Draw court (in original orientation, we'll flip the axis)
+    draw_court_v2(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=False)
+
+    # 5. Set axis range and aspect
+    ax.set_xlim(xlim)
+    if flip_court:
+        ax.set_ylim(470, -60)  # Expanded limits to prevent cutoff (hoop at bottom)
+    else:
+        ax.set_ylim(470, -60)  # Original axis (hoop at bottom)
+    ax.set_aspect('equal')
+
+    # 6. Plot hex data
+    data, player = get_team_defense_data_and_league_avg(data, league_avg)
+    boundaries, cmap = plot_team_defense_shot_chart(ax, data, player)
+    # create_shot_average_and_shot_frequency_legend(boundaries, cmap, fig)
+
+    # 7. Style axes
+    for spine in ax.spines:
+        ax.spines[spine].set_lw(court_lw)
+        ax.spines[spine].set_color(line_color)
+
+    if despine:
+        for side in ["top", "bottom", "right", "left"]:
+            ax.spines[side].set_visible(False)
+    #
+    # assist, blocks, fg, fg3, team_id, points, rebounds, steals = get_average_stats_against_team(nba_team_name, nba_season,
+    #                                                                                           season_type)
+    # add_team_image_to_chart(ax, team_id, xlim, ylim)
+    #
+    # add_team_shot_chart_header_info(assist, blocks, fg, fg3, fig, points, rebounds, nba_season, steals,
+    #                                 nba_team_name, season_type, "black")
+
+    fig.text(0.5, 0.96, f"{nba_team_name} {nba_season} Defensive {season_type} Performance. \n"
+                        f"{nba_team_name} team defensive stats vs NBA League as a whole. ",
+             ha='center', va='top', fontsize=16, fontweight='bold')
+    save_directory = 'shotcharts'
+    os.makedirs(save_directory, exist_ok=True)
+    if game_id is not None:
+        file_name = os.path.join(save_directory,
+                                 f"{nba_team_name}_{nba_season}_{season_type}_{game_id}_defense hexmap_chart.png")
+    else:
+        file_name = os.path.join(save_directory,
+                                 f"{nba_team_name}_{nba_season}_{season_type}_defense regular_season_hexmap_chart.png")
 
     plt.savefig(file_name, dpi=300, bbox_inches=None, pad_inches=0)
     plt.close()
@@ -446,7 +578,7 @@ def team_hexmap_playoff_chart(data, league_avg, nba_team_name, nba_season, title
 
     assist, blocks, fg, fg3, team_id, points, rebounds, steals = add_team_playoff_stats_to_shot_chart(nba_team_name,
                                                                                                       nba_season)
-    add_team_image_to_chart(ax, team_id, xlim, ylim)
+    add_team_image_to_chart(ax, nba_team_name, team_id, xlim, ylim)
 
     add_team_playoff_shot_chart_header_info(assist, blocks, fg, fg3, fig, points, rebounds, nba_season, steals,
                                             nba_team_name)
@@ -638,10 +770,6 @@ def add_player_stats_to_shot_chart(nba_player_name, nba_season, season_type, pla
     rebounds = nba_player_season_average['REB']
     steals = nba_player_season_average['STL']
     return assist, blocks, fg, fg3, plus_minus, points, rebounds, season, steals
-
-
-from nba_api.stats.static import teams
-from nba_api.stats.endpoints import teamgamelog
 
 
 def add_team_stats_to_shot_chart(nba_team_name, nba_season, season_type):
@@ -977,6 +1105,116 @@ def plot_nba_player_shot_chart_data_v2(ax, data, player):
     return boundaries, cmap
 
 
+def resolve_fgp_diff_column(data):
+    if 'FGP_DIFF_x' in data.columns and 'FGP_DIFF_y' in data.columns:
+        data['FGP_DIFF'] = data['FGP_DIFF_y']
+        return data.drop(columns=['FGP_DIFF_x', 'FGP_DIFF_y'])
+    elif 'FGP_DIFF_x' in data.columns:
+        data['FGP_DIFF'] = data['FGP_DIFF_x']
+        return data.drop(columns=['FGP_DIFF_x'])
+    elif 'FGP_DIFF_y' in data.columns:
+        data['FGP_DIFF'] = data['FGP_DIFF_y']
+        return data.drop(columns=['FGP_DIFF_y'])
+    return data
+
+
+def plot_team_defense_shot_chart(ax, data, defense):
+    # Coordinate shift for plotting
+    OFFSET = 512
+    x = data['LOC_X']
+    y = -data['LOC_Y'] + OFFSET
+
+    # Color map: negative = good defense, positive = bad defense (FG% above league average)
+    colors = ["#00008C", "#4467C4", "#ADD8E6", "#FFFF00", "#FF5C00", "#ff0000"]
+    cmap = ListedColormap(colors)
+    boundaries = [-100, -9, -3, 0, 3, 9, 100]
+    norm = BoundaryNorm(boundaries, cmap.N, clip=True)
+
+    # Plot hexbins (C must be FG% difference vs league avg)
+
+    data = resolve_fgp_diff_column(data)
+    extent = [-275, 275, -50, 425]
+    hexbin = ax.hexbin(x, y, gridsize=40, cmap=cmap, norm=norm, extent=extent)
+    hexbin2 = ax.hexbin(x, y, C=data['FGP_DIFF'], gridsize=40, cmap=cmap, norm=norm, extent=extent)
+    sized_hexbin(ax, hexbin, hexbin2, cmap, norm)
+
+    # Helper to flip court y-coordinates
+    def flip_y(y_val):
+        return -y_val + OFFSET
+
+    # Zones for annotations
+    zone_mapping = {
+        ('Center(C)', 'Less Than 8 ft.'): ('Restricted Area', (0, 20)),
+        ('Center(C)', '8-16 ft.'): ('In The Paint (Non-RA)', (0, 80)),
+        ('Center(C)', '16-24 ft.'): ('Mid-Range (Center)', (0, 180)),
+        ('Left Side Center(LC)', '16-24 ft.'): ('Mid-Range (Left)', (-100, 150)),
+        ('Right Side Center(RC)', '16-24 ft.'): ('Mid-Range (Right)', (100, 150)),
+        ('Left Side(L)', '24+ ft.'): ('Left Corner 3', (-220, 20)),
+        ('Right Side(R)', '24+ ft.'): ('Right Corner 3', (220, 20)),
+        ('Center(C)', '24+ ft.'): ('Above the Break 3 (Center)', (0, 280)),
+        ('Left Side Center(LC)', '24+ ft.'): ('Above the Break 3 (Left)', (-150, 250)),
+        ('Right Side Center(RC)', '24+ ft.'): ('Above the Break 3 (Right)', (150, 250)),
+    }
+
+    # FG% by zone for opponents (i.e., defense)
+    zone_fgp = {}
+    for (area, range_), (zone_name, _) in zone_mapping.items():
+        if (area, range_) in defense.index:
+            fgp = defense.loc[(area, range_), 'FGP'] * 100
+            zone_fgp[zone_name] = {
+                'FGP': fgp,
+                'FGM': defense.loc[(area, range_), 'Makes'],
+                'FGA': defense.loc[(area, range_), 'FGA']
+            }
+
+    # Annotate with FG% allowed by the team (i.e., lower = better)
+    for (area, range_), (zone_name, (x_center, y_court)) in zone_mapping.items():
+        if zone_name in zone_fgp and zone_fgp[zone_name]['FGA'] > 0:
+            fgp = zone_fgp[zone_name]['FGP']
+            y_center = flip_y(-y_court)
+            ax.text(x_center, -420 + y_center, f'{fgp:.0f}%', ha='center', va='center',
+                    fontsize=20, color='black', weight='bold')
+
+    return boundaries, cmap
+
+
+def get_team_defense_data_and_league_avg(opponent_data, league_data):
+    # --- Calculate league-wide FG% by zone ---
+    league = (
+        league_data
+        .groupby(['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'SHOT_MADE_FLAG'])
+        .size()
+        .unstack(fill_value=0)
+        .rename(columns={0: 'Misses', 1: 'Makes'})
+    )
+    league['FGA'] = league['Makes'] + league['Misses']
+    league['FGP'] = league['Makes'] / league['FGA']
+
+    # --- Calculate FG% by opponents vs this team ---
+    defense = (
+        opponent_data
+        .groupby(['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'SHOT_MADE_FLAG'])
+        .size()
+        .unstack(fill_value=0)
+        .rename(columns={0: 'Misses', 1: 'Makes'})
+    )
+    defense['FGA'] = defense['Makes'] + defense['Misses']
+    defense['FGP'] = defense['Makes'] / defense['FGA']
+
+    # --- Compute difference: team defense FG% vs league FG% ---
+    fg_diff = (defense['FGP'] - league['FGP']) * 100  # Positive = worse defense, Negative = better
+
+    # --- Merge FG_DIFF into shot-level opponent data for plotting ---
+    merged = pd.merge(
+        opponent_data,
+        fg_diff.rename('FGP_DIFF'),
+        on=['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE'],
+        how='right'
+    )
+
+    return merged, defense
+
+
 def get_player_data_and_calculate_league_average(data, league_avg):
     LA = (league_avg.loc[:, ['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'FGA', 'FGM']]
           .groupby(['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE'])
@@ -993,17 +1231,60 @@ def get_player_data_and_calculate_league_average(data, league_avg):
     return data, player
 
 
-def add_team_image_to_chart(ax, team_id, xlim, ylim):
+def get_team_defense_vs_league_avg(opponent_shot_data, league_avg_data):
+    # 1. League-wide FG% by zone
+    # 1. Calculate FGA and FGM for league from raw shots
+    league_grouped = (
+        league_avg_data
+        .groupby(['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'SHOT_MADE_FLAG'])
+        .size()
+        .unstack(fill_value=0)
+        .rename(columns={0: 'Misses', 1: 'Makes'})
+    )
+
+    league_grouped['FGA'] = league_grouped['Makes'] + league_grouped['Misses']
+    league_grouped['FGM'] = league_grouped['Makes']
+    league_grouped['FGP'] = league_grouped['Makes'] / league_grouped['FGA']
+
+    # 2. Opponent FG% against team by zone
+    team_defense = (
+        opponent_shot_data
+        .groupby(['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE', 'SHOT_MADE_FLAG'])
+        .size()
+        .unstack(fill_value=0)
+        .rename(columns={0: 'Misses', 1: 'Makes'})
+    )
+
+    team_defense['FGA'] = team_defense['Makes'] + team_defense['Misses']
+    team_defense['FGP'] = team_defense['Makes'] / team_defense['FGA']
+
+    # 3. Compare team defense FG% to league average
+    team_defense['FGP_DIFF'] = (team_defense['FGP'] - league_grouped['FGP']) * 100
+
+    # 4. Merge zone-based difference back into shot-level data (for plotting)
+    merged = pd.merge(
+        opponent_shot_data,
+        team_defense['FGP_DIFF'].rename('FGP_DIFF'),
+        on=['SHOT_ZONE_AREA', 'SHOT_ZONE_RANGE'],
+        how='right'
+    )
+
+    return merged, team_defense
+
+
+def add_team_image_to_chart(ax, nba_team_name, team_id, xlim, ylim):
     try:
-        img = (Image.open(
-            '/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/shotcharts/nba-logo.jpg').convert(
-            "RGB"))
-        img.show()
-        imagebox = OffsetImage(img, zoom=.2)
-        # Coordinates in axes fraction (0 = left/bottom, 1 = right/top)
-        ab = AnnotationBbox(imagebox, (-.10, .15), xycoords='axes fraction',
-                            frameon=False, box_alignment=(0, 1))
-        ax.add_artist(ab)
+        if team_logo_images.__contains__(nba_team_name):
+            nba_logo_name = team_logo_images.get(nba_team_name)
+            img = (Image.open(
+                f'{nba_logo_name}').convert(
+                "RGB"))
+            img.show()
+            imagebox = OffsetImage(img, zoom=.2)
+            # Coordinates in axes fraction (0 = left/bottom, 1 = right/top)
+            ab = AnnotationBbox(imagebox, (-.10, .15), xycoords='axes fraction',
+                                frameon=False, box_alignment=(0, 1))
+            ax.add_artist(ab)
     except Exception as e:
         print(f"Could not load image for player {team_id}: {e}")
 
@@ -1214,7 +1495,7 @@ def heatmap_team(data, team_name, season, season_type, title="", color="b", xlim
 
     assist, blocks, fg, fg3, team_id, points, rebounds, steals = add_team_stats_to_shot_chart(team_name, season,
                                                                                               season_type)
-    add_team_image_to_chart(ax, team_id, xlim, ylim)
+    add_team_image_to_chart(ax, team_name, team_id, xlim, ylim)
     add_team_shot_chart_header_info(assist, blocks, fg, fg3, fig, points, rebounds, season, steals, team_name,
                                     season_type, "white")
 
@@ -1227,6 +1508,7 @@ def heatmap_team(data, team_name, season, season_type, title="", color="b", xlim
 def create_team_hexmap_per_season(team_name, season, season_type, game_id):
     team_shotchart_df, team_league_avg = get_team_shot_chart_updated(team_name, season, season_type, game_id)
     team_hexmap_chart(team_shotchart_df, team_league_avg, team_name, season, season_type, game_id)
+    # create_team_defense_heatmap(team_name, team_league_avg, season, season_type)
     return f"Hexmap created for {team_name} for season: {season}"
 
 
@@ -1253,3 +1535,54 @@ def create_team_playoffs_finals_per_game_hexmap_shot_chart(player_name, season, 
     player_playoff_shotchart_df, playoff_leage_avg = get_team_finals_per_game_shot_chart_detail(player_name, season)
     hexmap_finals_playoff_chart(team_finals_shot_chart_df, playoff_leage_avg, player_name, season, game_id)
     return f"Hex Map finals playoff created for {player_name} during season: {season} for game id {game_id}"
+
+
+def get_all_shots_across_league(season, season_type='Regular Season', sleep_time=1.2):
+    all_teams = teams.get_teams()
+    all_shots = []
+
+    print(f"Fetching shot data for all NBA teams in {season} {season_type}...")
+
+    for team in all_teams:
+        team_id = team['id']
+        team_name = team['full_name']
+        print(f"Getting shots for {team_name}...")
+
+        try:
+            shots = shotchartdetail.ShotChartDetail(
+                team_id=team_id,
+                player_id=0,
+                season_nullable=season,
+                season_type_all_star=season_type,
+                context_measure_simple="FGA"
+            ).get_data_frames()[0]
+
+            all_shots.append(shots)
+            time.sleep(sleep_time)  # Respect rate limits
+
+        except Exception as e:
+            print(f"Failed for {team_name}: {e}")
+
+    if all_shots:
+        league_df = pd.concat(all_shots, ignore_index=True)
+        print(f"Collected {len(league_df)} total shots from all teams.")
+        return league_df
+    else:
+        print("No shot data collected.")
+        return pd.DataFrame()
+
+
+def create_team_defense_heatmap(team_name, team_avg, season, season_type):
+    # 1. Get opponent shots against the team for the full season
+    opponent_data = get_opponent_shots_against_team(team_name, season, season_type)
+
+    # 2. Get league-wide shot data (pre-cached or call another function)
+    league_data = get_all_shots_across_league(season, season_type)  # <- implement or load this externally
+
+    # 3. Calculate FG% difference between opponents vs league avg
+    defense_data, zone_stats = get_team_defense_vs_league_avg(opponent_data, league_data)
+
+    # 4. Generate heatmap or hexbin chart
+    team_defense_hexmap_chart(defense_data, league_data, team_name, season, season_type, None)
+
+    return f"{season_type} Defensive Heat Map created for {team_name} for season: {season}"
