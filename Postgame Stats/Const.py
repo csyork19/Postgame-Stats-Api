@@ -28,3 +28,33 @@ class Constants:
     nba_player_stat_avg_columns = [
         "AST", "BLK", "DREB", "FG3A", "FG3M", "FG3_PCT", "FGA", "FGM", "FG_PCT",
         "FTA", "FTM", "FT_PCT", "MIN", "OREB", "PF", "PLUS_MINUS", "PTS", "REB", "STL", "TOV"]
+
+    team_logo_images = {
+        "Philadelphia 76ers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/76ers.png",
+        "Atlanta Hawks": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/atlanta.png",
+        "Boston Celtics": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/boston.png",
+        "Brooklyn Nets": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/brooklyn.png",
+        "Milwaukee Bucks": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/bucks.png",
+        "Chicago Bulls": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/bulls.png",
+        "Cleveland Cavaliers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/cavs.png",
+        "Los Angeles Clippers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/clippers.png",
+        "Memphis Grizzlies": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/grizzlies.png",
+        "Miami Heat": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/heat.png",
+        "Charlotte Hornets": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/hornets.png",
+        "Utah Jazz": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/jazz.png",
+        "Sacramento Kings": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/kings.png",
+        "New York Knicks": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/knicks.png",
+        "Los Angeles Lakers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/lakers.png",
+        "Orlando Magic": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/magic.png",
+        "Dallas Mavericks": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/mavericks.png",
+        "Denver Nuggets": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/nuggets.png",
+        "Indiana Pacers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/pacers.png",
+        "New Orleans Pelicans": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/pelicans.png",
+        "Detroit Pistons": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/pistons.png",
+        "Toronto Raptors": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/raptors.png",
+        "Houston Rockets": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/rockets.png",
+        "San Antonio Spurs": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/spurs.png",
+        "Phoenix Suns": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/suns.png",
+        "Oklahoma City Thunder": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/thunder.png",
+        "Trae Young": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/t_young.png"
+    }

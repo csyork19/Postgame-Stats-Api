@@ -2,12 +2,13 @@ from datetime import time
 from io import BytesIO
 import requests
 from scipy.stats import percentileofscore
-from nba_api.stats.static import players
 from nba_api.stats.endpoints import playergamelog, playercareerstats
 import seaborn as sns
 from matplotlib.collections import PatchCollection
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
+
+import Const
 import PostGameStatsUtil
 from matplotlib.patches import RegularPolygon
 import numpy as np
@@ -32,50 +33,17 @@ pd.options.display.max_columns = None
 
 global player_id
 
-team_logo_images = {
-    "Philadelphia 76ers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/76ers.png",
-    "Atlanta Hawks": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/atlanta.png",
-    "Boston Celtics": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/boston.png",
-    "Brooklyn Nets": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/brooklyn.png",
-    "Milwaukee Bucks": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/bucks.png",
-    "Chicago Bulls": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/bulls.png",
-    "Cleveland Cavaliers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/cavs.png",
-    "Los Angeles Clippers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/clippers.png",
-    "Memphis Grizzlies": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/grizzlies.png",
-    "Miami Heat": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/heat.png",
-    "Charlotte Hornets": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/hornets.png",
-    "Utah Jazz": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/jazz.png",
-    "Sacramento Kings": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/kings.png",
-    "New York Knicks": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/knicks.png",
-    "Los Angeles Lakers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/lakers.png",
-    "Orlando Magic": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/magic.png",
-    "Dallas Mavericks": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/mavericks.png",
-    "Denver Nuggets": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/nuggets.png",
-    "Indiana Pacers": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/pacers.png",
-    "New Orleans Pelicans": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/pelicans.png",
-    "Detroit Pistons": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/pistons.png",
-    "Toronto Raptors": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/raptors.png",
-    "Houston Rockets": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/rockets.png",
-    "San Antonio Spurs": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/spurs.png",
-    "Phoenix Suns": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/suns.png",
-    "Oklahoma City Thunder": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/thunder.png",
-    "Trae Young": "/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/team_logo/t_young.png"
-}
-
 
 def get_team_games(team_name, season_id):
-    nba_teams = teams.get_teams()
-    team_id = [team['id'] for team in nba_teams if team['full_name'] == team_name][0]
-    game_finder = leaguegamefinder.LeagueGameFinder(team_id_nullable=team_id, season_nullable=season_id)
+    nba_team_id = PostGameStatsUtil.PostGameStatsUtil.get_team_id(team_name)
+    game_finder = leaguegamefinder.LeagueGameFinder(team_id_nullable=nba_team_id, season_nullable=season_id)
     games = game_finder.get_data_frames()[0]
     return games[['GAME_ID', 'MATCHUP']]
 
 
 def get_opponent_shots_against_team(team_name, season_id, season_type='Regular Season'):
     games = get_team_games(team_name, season_id)
-    nba_teams = teams.get_teams()
-    team_id = [team['id'] for team in nba_teams if team['full_name'] == team_name][0]
-
+    nba_team_id = PostGameStatsUtil.PostGameStatsUtil.get_team_id(team_name)
     all_opponent_shots = []
     for _, row in tqdm(games.iterrows(), total=len(games)):
         game_id = row['GAME_ID']
@@ -88,35 +56,31 @@ def get_opponent_shots_against_team(team_name, season_id, season_type='Regular S
             season_type_all_star=season_type,
             context_measure_simple="FGA"
         ).get_data_frames()[0]
-        opponent_shots = shots[shots['TEAM_ID'] != team_id]
+        opponent_shots = shots[shots['TEAM_ID'] != nba_team_id]
         all_opponent_shots.append(opponent_shots)
     full_df = pd.concat(all_opponent_shots, ignore_index=True)
     return full_df
 
 
 def get_player_shot_chart_detail_updated(player_name, season_id, season_type, game_id):
-    nba_players = players.get_players()
-    player_dict = [player for player in nba_players if player['full_name'] == player_name][0]
-    player_id = player_dict['id']
-    career = playercareerstats.PlayerCareerStats(player_id=player_id)
+    nba_player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(player_name)
+    career = playercareerstats.PlayerCareerStats(player_id=nba_player_id)
     career_df = career.get_data_frames()[0]
     team_id = career_df[career_df['SEASON_ID'] == season_id]['TEAM_ID']
-    shot_chart_list = shotchartdetail.ShotChartDetail(team_id=team_id,
-                                                      player_id=player_dict['id'],
-                                                      season_type_all_star=season_type,
-                                                      season_nullable=season_id,
-                                                      game_id_nullable=game_id if game_id is not None else None,
-                                                      context_measure_simple="FGA").get_data_frames()
-    return shot_chart_list[0], shot_chart_list[1], player_id
+    shot_chart_list = shotchartdetail.ShotChartDetail(
+        team_id=team_id,
+        player_id=nba_player_id,
+        season_type_all_star=season_type,
+        season_nullable=season_id,
+        game_id_nullable=game_id if game_id is not None else None,
+        context_measure_simple="FGA").get_data_frames()
+    return shot_chart_list[0], shot_chart_list[1], nba_player_id
 
 
 def get_team_shot_chart_updated(team_name, season_id, season_type, game_id):
-    nba_teams = teams.get_teams()
-    team_dict = [team for team in nba_teams if team['full_name'] == team_name][0]
-    team_id = team_dict['id']
-
+    nba_team_id = PostGameStatsUtil.PostGameStatsUtil.get_team_id(team_name)
     shot_chart_list = shotchartdetail.ShotChartDetail(
-        team_id=team_id,
+        team_id=nba_team_id,
         player_id=0,  # Use 0 or omit this parameter
         season_type_all_star=season_type,
         season_nullable=season_id,
@@ -128,13 +92,12 @@ def get_team_shot_chart_updated(team_name, season_id, season_type, game_id):
 
 
 def get_player_per_game_shot_chart(player_name, season_id, game_id):
-    nba_players = players.get_players()
-    player_dict = [player for player in nba_players if player['full_name'] == player_name][0]
-    career = playercareerstats.PlayerCareerStats(player_id=player_dict['id'])
+    nba_player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(player_name)
+    career = playercareerstats.PlayerCareerStats(player_id=nba_player_id)
     career_df = career.get_data_frames()[0]
     team_id = career_df[career_df['SEASON_ID'] == season_id]['TEAM_ID']
     shot_chart_list = shotchartdetail.ShotChartDetail(team_id=team_id,
-                                                      player_id=player_dict['id'],
+                                                      player_id=nba_player_id,
                                                       season_type_all_star='Regular Season',
                                                       season_nullable=season_id,
                                                       game_id_nullable=game_id,
@@ -143,10 +106,8 @@ def get_player_per_game_shot_chart(player_name, season_id, game_id):
 
 
 def get_player_finals_shot_chart_detail(player_name, season_id, game_id):
-    nba_players = players.get_players()
-    player_dict = next(player for player in nba_players if player['full_name'] == player_name)
-
-    game_finder = leaguegamefinder.LeagueGameFinder(player_id_nullable=player_dict['id'],
+    nba_player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(player_name)
+    game_finder = leaguegamefinder.LeagueGameFinder(player_id_nullable=nba_player_id,
                                                     season_type_nullable='Playoffs',
                                                     season_nullable=season_id)
     all_games = game_finder.get_data_frames()[0]
@@ -157,7 +118,7 @@ def get_player_finals_shot_chart_detail(player_name, season_id, game_id):
         raise ValueError(f"No Finals games found for {player_name} in {season_id}.")
 
     shot_chart = shotchartdetail.ShotChartDetail(team_id=team_id,
-                                                 player_id=player_dict['id'],
+                                                 player_id=nba_player_id,
                                                  season_type_all_star='Playoffs',
                                                  season_nullable=season_id,
                                                  context_measure_simple="FGA").get_data_frames()[0]
@@ -166,11 +127,8 @@ def get_player_finals_shot_chart_detail(player_name, season_id, game_id):
 
 
 def get_team_finals_per_game_shot_chart_detail(team_name, season_id, game_id_prefix="004"):
-    nba_teams = teams.get_teams()
-    team_dict = next(team for team in nba_teams if team['full_name'] == team_name)
-    team_id = team_dict['id']
-
-    game_finder = leaguegamefinder.LeagueGameFinder(team_id_nullable=team_id,
+    nba_team_id = PostGameStatsUtil.PostGameStatsUtil.get_team_id(team_name)
+    game_finder = leaguegamefinder.LeagueGameFinder(team_id_nullable=nba_team_id,
                                                     season_type_nullable='Playoffs',
                                                     season_nullable=season_id)
     all_games = game_finder.get_data_frames()[0]
@@ -180,7 +138,7 @@ def get_team_finals_per_game_shot_chart_detail(team_name, season_id, game_id_pre
     if not finals_game_ids:
         raise ValueError(f"No Finals games found for {team_name} in {season_id}.")
 
-    shot_chart = shotchartdetail.ShotChartDetail(team_id=team_id,
+    shot_chart = shotchartdetail.ShotChartDetail(team_id=nba_team_id,
                                                  player_id=0,  # 0 = all players (i.e., team)
                                                  season_type_all_star='Playoffs',
                                                  season_nullable=season_id,
@@ -297,12 +255,6 @@ def add_player_image_to_shot_chart(ax, player_image_path, player_name, xlim, yli
     if player_image_path and os.path.exists(player_image_path):
         player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(player_name)
         url = f"https://cdn.nba.com/headshots/nba/latest/260x190/{player_id}.png"
-        # img2 = Image.open('/Users/stormyork/Documents/Personal Projects/Postgame-Stats-Api/Postgame Stats/shotcharts/nba-logo.jpg').convert("RGB")
-        # img2.show()
-        # imagebox = OffsetImage(img2, zoom=.2)
-        # # Coordinates in axes fraction (0 = left/bottom, 1 = right/top)
-        # ab = AnnotationBbox(imagebox, (-.10, .15), xycoords='axes fraction',
-        #                     frameon=False, box_alignment=(0, 1))
         try:
             img = Image.open(BytesIO(requests.get(url).content)).convert("RGB")
             imagebox = OffsetImage(img, zoom=.5)
@@ -1274,8 +1226,8 @@ def get_team_defense_vs_league_avg(opponent_shot_data, league_avg_data):
 
 def add_team_image_to_chart(ax, nba_team_name, team_id, xlim, ylim):
     try:
-        if team_logo_images.__contains__(nba_team_name):
-            nba_logo_name = team_logo_images.get(nba_team_name)
+        if Const.Constants.team_logo_images.__contains__(nba_team_name):
+            nba_logo_name = Const.Constants.team_logo_images.get(nba_team_name)
             img = (Image.open(
                 f'{nba_logo_name}').convert(
                 "RGB"))
