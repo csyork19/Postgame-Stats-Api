@@ -23,6 +23,21 @@ class PostGameStatsUtil:
         conn.close()
         return str(result[0])
 
+    def get_team_id(self):
+        db_path = "/Users/stormyork/Documents/NBA Information.db"
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+
+        # Case-insensitive match
+        cur.execute("""
+                   SELECT id
+                   FROM nba_teams
+                   WHERE LOWER(full_name) = LOWER(?)
+               """, (self,))
+
+        result = cur.fetchone()
+        conn.close()
+        return str(result[0])
 
     def get_player_season_shot_chart(self, season):
         shot_chart_data = shotchartdetail.ShotChartDetail(
