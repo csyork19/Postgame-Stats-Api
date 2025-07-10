@@ -1,4 +1,6 @@
 from flask import Flask, request
+
+import NFLStats
 import NbaPlayerStats
 import TeamStats
 import ShotChartUtil
@@ -199,6 +201,20 @@ def create_team_hexmap():
 
 @require_json
 @handle_exceptions
+@app.route('/api/nba/team/defensiveHexmap', methods=['POST'])
+def create_team_defensive_hexmap():
+    team_name = request.get_json()['teamName']
+    season = request.get_json()['season']
+    season_type = request.get_json()['seasonType']
+    game_id = request.get_json()['gameId']
+    logger.info(f"retrieving NBA team hexmap - {team_name} | {season} | {season_type} | {game_id}")
+    response = ShotChartUtil.create_team_defense_heatmap(team_name, season, season_type, game_id)
+    logger.info(f"retrieved NBA team hexmap - {team_name} | {season} | {season_type} | {game_id}")
+    return response
+
+
+@require_json
+@handle_exceptions
 @app.route('/api/nba/team/seasonStats', methods=['POST'])
 def get_team_season_stats():
     data = request.get_json()
@@ -305,6 +321,20 @@ def get_gleague_player_season_stats():
     response = NbaPlayerStats.get_glegaue_player_season_stats(player_name)
     logger.info(f"retrieved G League player season stats - {player_name}")
     return response
+
+
+@require_json
+@handle_exceptions
+@app.route('/api/nfl/player/seasonStats', methods=['POST'])
+def get_nfl_player_season_stats():
+    player_name = request.get_json()['playerName']
+    season = request.get_json()['season']
+    seasonType = request.get_json()['seasonType']
+    logger.info(f"retrieving NFL player season stats - {player_name}")
+    response = NFLStats.NFLPlayerStats.get_nfl_player_stats(player_name, season, seasonType)
+    logger.info(f"retrieved NFL player season stats - {player_name}")
+    return response
+
 
 
 

@@ -7,7 +7,7 @@ import seaborn as sns
 from matplotlib.collections import PatchCollection
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
-
+from matplotlib.patches import Circle, Rectangle, Arc
 import Const
 import PostGameStatsUtil
 from matplotlib.patches import RegularPolygon
@@ -34,21 +34,19 @@ pd.options.display.max_columns = None
 global player_id
 
 
-def get_team_games(team_name, season_id):
+def get_team_games(team_name: str, season_id: str) -> dict:
     nba_team_id = PostGameStatsUtil.PostGameStatsUtil.get_team_id(team_name)
-    game_finder = leaguegamefinder.LeagueGameFinder(team_id_nullable=nba_team_id, season_nullable=season_id)
-    games = game_finder.get_data_frames()[0]
-    return games[['GAME_ID', 'MATCHUP']]
+    nba_game_finder = leaguegamefinder.LeagueGameFinder(team_id_nullable=nba_team_id, season_nullable=season_id)
+    nba_games = nba_game_finder.get_data_frames()[0]
+    return nba_games[['GAME_ID', 'MATCHUP']]
 
 
-def get_opponent_shots_against_team(team_name, season_id, season_type='Regular Season'):
-    games = get_team_games(team_name, season_id)
+def get_opponent_shots_against_team(team_name: str, season_id: str, season_type):
+    nba_games = get_team_games(team_name, season_id)
     nba_team_id = PostGameStatsUtil.PostGameStatsUtil.get_team_id(team_name)
     all_opponent_shots = []
-    for _, row in tqdm(games.iterrows(), total=len(games)):
+    for _, row in tqdm(nba_games.iterrows(), total=len(nba_games)):
         game_id = row['GAME_ID']
-        matchup = row['MATCHUP']
-        is_home_game = team_name in matchup.split(" ")[0]
         shots = shotchartdetail.ShotChartDetail(
             team_id=0,
             player_id=0,
@@ -62,7 +60,7 @@ def get_opponent_shots_against_team(team_name, season_id, season_type='Regular S
     return full_df
 
 
-def get_player_shot_chart_detail_updated(player_name, season_id, season_type, game_id):
+def get_nba_player_shot_chart_information(player_name: str, season_id: str, season_type: str, game_id: str):
     nba_player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(player_name)
     career = playercareerstats.PlayerCareerStats(player_id=nba_player_id)
     career_df = career.get_data_frames()[0]
@@ -77,7 +75,7 @@ def get_player_shot_chart_detail_updated(player_name, season_id, season_type, ga
     return shot_chart_list[0], shot_chart_list[1], nba_player_id
 
 
-def get_team_shot_chart_updated(team_name, season_id, season_type, game_id):
+def get_team_shot_chart_updated(team_name: str, season_id: str, season_type: str, game_id: str):
     nba_team_id = PostGameStatsUtil.PostGameStatsUtil.get_team_id(team_name)
     shot_chart_list = shotchartdetail.ShotChartDetail(
         team_id=nba_team_id,
@@ -87,29 +85,32 @@ def get_team_shot_chart_updated(team_name, season_id, season_type, game_id):
         game_id_nullable=game_id if game_id is not None else None,
         context_measure_simple="FGA"
     ).get_data_frames()
-
     return shot_chart_list[0], shot_chart_list[1]
 
 
-def get_player_per_game_shot_chart(player_name, season_id, game_id):
+def get_player_per_game_shot_chart(player_name: str, season_id: str, game_id: str):
     nba_player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(player_name)
     career = playercareerstats.PlayerCareerStats(player_id=nba_player_id)
     career_df = career.get_data_frames()[0]
     team_id = career_df[career_df['SEASON_ID'] == season_id]['TEAM_ID']
-    shot_chart_list = shotchartdetail.ShotChartDetail(team_id=team_id,
-                                                      player_id=nba_player_id,
-                                                      season_type_all_star='Regular Season',
-                                                      season_nullable=season_id,
-                                                      game_id_nullable=game_id,
-                                                      context_measure_simple="FGA").get_data_frames()
+    shot_chart_list = shotchartdetail.ShotChartDetail(
+        team_id=team_id,
+        player_id=nba_player_id,
+        season_type_all_star='Regular Season',
+        season_nullable=season_id,
+        game_id_nullable=game_id,
+        context_measure_simple="FGA"
+    ).get_data_frames()
     return shot_chart_list[0]
 
 
-def get_player_finals_shot_chart_detail(player_name, season_id, game_id):
+def get_nba_finals_player_shot_chart_information(player_name: str, season_id: str, game_id: str):
     nba_player_id = PostGameStatsUtil.PostGameStatsUtil.get_player_id(player_name)
-    game_finder = leaguegamefinder.LeagueGameFinder(player_id_nullable=nba_player_id,
-                                                    season_type_nullable='Playoffs',
-                                                    season_nullable=season_id)
+    game_finder = leaguegamefinder.LeagueGameFinder(
+        player_id_nullable=nba_player_id,
+        season_type_nullable='Playoffs',
+        season_nullable=season_id
+    )
     all_games = game_finder.get_data_frames()[0]
     finals_games = all_games[all_games['GAME_ID'].str.contains('00424004')]
     finals_game_ids = finals_games['GAME_ID'].unique().tolist()
@@ -117,20 +118,23 @@ def get_player_finals_shot_chart_detail(player_name, season_id, game_id):
     if not team_id:
         raise ValueError(f"No Finals games found for {player_name} in {season_id}.")
 
-    shot_chart = shotchartdetail.ShotChartDetail(team_id=team_id,
-                                                 player_id=nba_player_id,
-                                                 season_type_all_star='Playoffs',
-                                                 season_nullable=season_id,
-                                                 context_measure_simple="FGA").get_data_frames()[0]
+    shot_chart = shotchartdetail.ShotChartDetail(
+        team_id=team_id,
+        player_id=nba_player_id,
+        season_type_all_star='Playoffs',
+        season_nullable=season_id,
+        context_measure_simple="FGA").get_data_frames()[0]
     shot_chart_finals = shot_chart[shot_chart['GAME_ID'].isin(finals_game_ids)]
     return shot_chart_finals
 
 
-def get_team_finals_per_game_shot_chart_detail(team_name, season_id, game_id_prefix="004"):
+def get_nba_finals_team_per_game_shot_chart_information(team_name: str, season_id: str, game_id_prefix="004"):
     nba_team_id = PostGameStatsUtil.PostGameStatsUtil.get_team_id(team_name)
-    game_finder = leaguegamefinder.LeagueGameFinder(team_id_nullable=nba_team_id,
-                                                    season_type_nullable='Playoffs',
-                                                    season_nullable=season_id)
+    game_finder = leaguegamefinder.LeagueGameFinder(
+        team_id_nullable=nba_team_id,
+        season_type_nullable='Playoffs',
+        season_nullable=season_id
+    )
     all_games = game_finder.get_data_frames()[0]
     finals_games = all_games[all_games['GAME_ID'].str.startswith(game_id_prefix)]
     finals_game_ids = finals_games['GAME_ID'].unique().tolist()
@@ -138,11 +142,13 @@ def get_team_finals_per_game_shot_chart_detail(team_name, season_id, game_id_pre
     if not finals_game_ids:
         raise ValueError(f"No Finals games found for {team_name} in {season_id}.")
 
-    shot_chart = shotchartdetail.ShotChartDetail(team_id=nba_team_id,
-                                                 player_id=0,  # 0 = all players (i.e., team)
-                                                 season_type_all_star='Playoffs',
-                                                 season_nullable=season_id,
-                                                 context_measure_simple="FGA").get_data_frames()[0]
+    shot_chart = shotchartdetail.ShotChartDetail(
+        team_id=nba_team_id,
+        player_id=0,  # 0 = all players (i.e., team)
+        season_type_all_star='Playoffs',
+        season_nullable=season_id,
+        context_measure_simple="FGA"
+    ).get_data_frames()[0]
     shot_chart_finals = shot_chart[shot_chart['GAME_ID'].isin(finals_game_ids)]
     grouped_by_game = {
         game_id: group_df.reset_index(drop=True)
@@ -152,8 +158,7 @@ def get_team_finals_per_game_shot_chart_detail(team_name, season_id, game_id_pre
     return grouped_by_game
 
 
-def draw_court_v2(ax=None, color="white", lw=1, shotzone=False, outer_lines=False, flip=False):
-    from matplotlib.patches import Circle, Rectangle, Arc
+def draw_nba_court(ax=None, color="white", lw=1, shotzone=False, outer_lines=False, flip=False):
     if ax is None:
         ax = plt.gca()
     OFFSET_Y = 95
@@ -197,13 +202,9 @@ def draw_court_v2(ax=None, color="white", lw=1, shotzone=False, outer_lines=Fals
     return ax
 
 
-def shot_chart_v2(data, player_name, year, title="", color="b",
-                  xlim=(-250, 250), ylim=(422.5, -47.5), line_color="blue",
-                  court_color="black", court_lw=2, outer_lines=False,
-                  flip_court=True, gridsize=None,
-                  ax=None, despine=False,
-                  player_image_path='curry.png',  # ← New parameter
-                  **kwargs):
+def draw_shot_chart(data, player_name: str, year: str, title="", color="b", xlim=(-250, 250), ylim=(422.5, -47.5),
+                    line_color="blue", court_color="black", court_lw=2, outer_lines=False, flip_court=True, gridsize=None,
+                    ax=None, despine=False, player_image_path='curry.png', **kwargs):
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 11))  # Ensure it draws a figure
     else:
@@ -220,7 +221,7 @@ def shot_chart_v2(data, player_name, year, title="", color="b",
     ax.set_title(f'{player_name} {year} Shot Chart', fontsize=18)
 
     # Draw court
-    draw_court_v2(ax, color=line_color, lw=court_lw, outer_lines=outer_lines)
+    draw_nba_court(ax, color=line_color, lw=court_lw, outer_lines=outer_lines)
 
     # Separate data by make or miss
     x_missed = data[data['EVENT_TYPE'] == 'Missed Shot']['LOC_X']
@@ -298,22 +299,23 @@ def sized_hexbin(ax, hc, hc2, cmap, norm):
     return pc  # ✅ This is key for colorbar to work!
 
 
-def hexmap_chart(data, league_avg, nba_player_name, nba_season, season_type, player_id, title="", color="b",
-                 xlim=(-250, 250), ylim=None, line_color="black", court_color="#FFFFFF", court_lw=2, outer_lines=False,
-                 flip_court=True, gridsize=None, ax=None, despine=False, **kwargs):
+def hexmap_chart(nba_shot_data: any, nba_league_average_shots: any, nba_player_name: str, nba_season: str,
+                 season_type: str, player_id: str, title="", color="b", xlim=(-250, 250), ylim=None, line_color="black",
+                 court_color="#FFFFFF", court_lw=2, outer_lines=False,flip_court=True, gridsize=None, ax=None,
+                 despine=False, **kwargs):
     # 1. Set default y-axis limits
     ylim = (470, -60)  # Original court orientation (hoop at y=0)
 
     # 2. Flip shot data if needed (to match court orientation)
     if flip_court:
-        data = data.copy()
-        data['LOC_Y'] = 422.5 - data['LOC_Y']
+        nba_shot_data = nba_shot_data.copy()
+        nba_shot_data['LOC_Y'] = 422.5 - nba_shot_data['LOC_Y']
 
     # 3. Create figure and axis
     ax, fig = create_figure_and_axis(ax, flip_court, title, xlim, ylim)
 
     # 4. Draw court (in original orientation, we'll flip the axis)
-    draw_court_v2(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=False)
+    draw_nba_court(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=False)
 
     # 5. Set axis range and aspect
     ax.set_xlim(xlim)
@@ -324,8 +326,8 @@ def hexmap_chart(data, league_avg, nba_player_name, nba_season, season_type, pla
     ax.set_aspect('equal')
 
     # 6. Plot hex data
-    data, player = get_player_data_and_calculate_league_average(data, league_avg)
-    boundaries, cmap = plot_nba_player_shot_chart_data_v2(ax, data, player)
+    nba_shot_data, player = get_player_data_and_calculate_league_average(nba_shot_data, nba_league_average_shots)
+    boundaries, cmap = plot_nba_player_shot_chart_data_v2(ax, nba_shot_data, player)
     create_shot_average_and_shot_frequency_legend(boundaries, cmap, fig)
 
     # 7. Style axes
@@ -374,7 +376,7 @@ def team_hexmap_chart(data, league_avg, nba_team_name, nba_season, season_type, 
     ax, fig = create_figure_and_axis(ax, flip_court, title, xlim, ylim)
 
     # 4. Draw court (in original orientation, we'll flip the axis)
-    draw_court_v2(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=False)
+    draw_nba_court(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=False)
 
     # 5. Set axis range and aspect
     ax.set_xlim(xlim)
@@ -436,7 +438,7 @@ def team_defense_hexmap_chart(data, league_avg, nba_team_name, nba_season, seaso
     ax, fig = create_figure_and_axis(ax, flip_court, title, xlim, ylim)
 
     # 4. Draw court (in original orientation, we'll flip the axis)
-    draw_court_v2(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=False)
+    draw_nba_court(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=False)
 
     # 5. Set axis range and aspect
     ax.set_xlim(xlim)
@@ -459,13 +461,6 @@ def team_defense_hexmap_chart(data, league_avg, nba_team_name, nba_season, seaso
     if despine:
         for side in ["top", "bottom", "right", "left"]:
             ax.spines[side].set_visible(False)
-    #
-    # assist, blocks, fg, fg3, team_id, points, rebounds, steals = get_average_stats_against_team(nba_team_name, nba_season,
-    #                                                                                           season_type)
-    # add_team_image_to_chart(ax, team_id, xlim, ylim)
-    #
-    # add_team_shot_chart_header_info(assist, blocks, fg, fg3, fig, points, rebounds, nba_season, steals,
-    #                                 nba_team_name, season_type, "black")
 
     fig.text(0.5, 0.96, f"{nba_team_name} {nba_season} Defensive {season_type} Performance. \n"
                         f"{nba_team_name} team defensive stats vs NBA League as a whole. ",
@@ -504,7 +499,7 @@ def team_hexmap_playoff_chart(data, league_avg, nba_team_name, nba_season, title
     ax, fig = create_figure_and_axis(ax, flip_court, title, xlim, ylim)
 
     # 4. Draw court (in original orientation, we'll flip the axis)
-    draw_court_v2(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=False)
+    draw_nba_court(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=False)
 
     # 5. Set axis range and aspect
     ax.set_xlim(xlim)
@@ -853,7 +848,7 @@ def hexmap_playoff_chart(data, league_avg, nba_player_name, nba_season, title=""
     ax, fig = create_figure_and_axis(ax, flip_court, title, xlim, ylim)
 
     # 4. Draw court (in original orientation, we'll flip the axis)
-    draw_court_v2(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=False)
+    draw_nba_court(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=False)
 
     # 5. Set axis range and aspect
     ax.set_xlim(xlim)
@@ -915,7 +910,7 @@ def hexmap_finals_playoff_chart(data, league_avg, nba_player_name, nba_season, g
     ax, fig = create_figure_and_axis(ax, flip_court, title, xlim, ylim)
 
     # 4. Draw court (in original orientation, we'll flip the axis)
-    draw_court_v2(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=False)
+    draw_nba_court(ax, color=line_color, lw=court_lw, outer_lines=outer_lines, flip=False)
 
     # 5. Set axis range and aspect
     ax.set_xlim(xlim)
@@ -1051,9 +1046,8 @@ def plot_nba_player_shot_chart_data_v2(ax, data, player):
         if zone_name in zone_fgp and zone_fgp[zone_name]['FGA'] > 0:
             fgp = zone_fgp[zone_name]['FGP']
             y_center = flip_y(-y_court)  # Flip y coordinate here
-            ax.text(x_center, -420 + y_center, f'{fgp:.0f}%', ha='center', va='center',
-                    fontsize=20, color='black', weight='bold')
-
+            ax.text(x_center, -420 + y_center, f'{fgp:.0f}%', ha='center', va='center',fontsize=20, color='black',
+                    weight='bold')
     return boundaries, cmap
 
 
@@ -1368,7 +1362,7 @@ def heatmap(data, player_name, season, season_type, player_id, title="", color="
 
     ax.set_title(title, fontsize=18)
 
-    draw_court_v2(ax, color=court_color, lw=court_lw, outer_lines=outer_lines)
+    draw_nba_court(ax, color=court_color, lw=court_lw, outer_lines=outer_lines)
 
     x_offset = 0  # try tweaking these values
     y_offset = 95  # start with small adjustments like -10, -15, or +10
@@ -1382,7 +1376,7 @@ def heatmap(data, player_name, season, season_type, player_id, title="", color="
     ax.scatter(x, y, facecolors='w', s=2, linewidths=0.1, **kwargs)
 
     # NOW draw the court lines on top
-    draw_court_v2(ax, color="white", lw=2, outer_lines=False)
+    draw_nba_court(ax, color="white", lw=2, outer_lines=False)
 
     # Set the spines to match the rest of court lines, makes outer_lines
     for spine in ax.spines:
@@ -1421,7 +1415,7 @@ def heatmap_team(data, team_name, season, season_type, title="", color="b", xlim
     ax.set_facecolor("black")
     ax.set_title(title, fontsize=18)
 
-    draw_court_v2(ax, color=court_color, lw=court_lw, outer_lines=outer_lines)
+    draw_nba_court(ax, color=court_color, lw=court_lw, outer_lines=outer_lines)
 
     x_offset = 0
     y_offset = 95
@@ -1433,7 +1427,7 @@ def heatmap_team(data, team_name, season, season_type, title="", color="b", xlim
 
     ax.scatter(x, y, facecolors='w', s=2, linewidths=0.1, **kwargs)
 
-    draw_court_v2(ax, color="white", lw=2, outer_lines=False)
+    draw_nba_court(ax, color="white", lw=2, outer_lines=False)
 
     for spine in ax.spines:
         ax.spines[spine].set_lw(court_lw)
@@ -1465,7 +1459,7 @@ def create_team_hexmap_per_season(team_name, season, season_type, game_id):
 
 
 def create_player_heatmap(player_name, season, season_type, game_id):
-    shot_df, league_avg, player_id = get_player_shot_chart_detail_updated(player_name, season, season_type, game_id)
+    shot_df, league_avg, player_id = get_nba_player_shot_chart_information(player_name, season, season_type, game_id)
     heatmap(shot_df, player_name, season, season_type, player_id)
     return f"{season_type} Heat Map created for {player_name} for season: {season} during the {season_type}."
 
@@ -1477,14 +1471,14 @@ def create_team_heatmap(team_name, season, season_type, game_id):
 
 
 def create_updated_player_regular_season_hexmap_shot_chart(player_name, season, season_type, game_id):
-    shot_df, league_avg, player_id = get_player_shot_chart_detail_updated(player_name, season, season_type, game_id)
+    shot_df, league_avg, player_id = get_nba_player_shot_chart_information(player_name, season, season_type, game_id)
     hexmap_chart(shot_df, league_avg, player_name, season, season_type, player_id)
     return f"{season_type} Hex Map created for {player_name} for season: {season}"
 
 
 def create_team_playoffs_finals_per_game_hexmap_shot_chart(player_name, season, game_id):
-    team_finals_shot_chart_df = get_team_finals_per_game_shot_chart_detail(player_name, season, game_id)
-    player_playoff_shotchart_df, playoff_leage_avg = get_team_finals_per_game_shot_chart_detail(player_name, season)
+    team_finals_shot_chart_df = get_nba_finals_team_per_game_shot_chart_information(player_name, season, game_id)
+    player_playoff_shotchart_df, playoff_leage_avg = get_nba_finals_team_per_game_shot_chart_information(player_name, season)
     hexmap_finals_playoff_chart(team_finals_shot_chart_df, playoff_leage_avg, player_name, season, game_id)
     return f"Hex Map finals playoff created for {player_name} during season: {season} for game id {game_id}"
 

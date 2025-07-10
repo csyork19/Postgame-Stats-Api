@@ -7,7 +7,7 @@ from nba_api.stats.static import players
 
 
 class PostGameStatsUtil:
-    def get_player_id(self):
+    def get_player_id(self: str) -> str:
         db_path = "/Users/stormyork/Documents/NBA Information.db"
         conn = sqlite3.connect(db_path)
         cur = conn.cursor()
@@ -23,7 +23,7 @@ class PostGameStatsUtil:
         conn.close()
         return str(result[0])
 
-    def get_team_id(self):
+    def get_team_id(self: str) -> str:
         db_path = "/Users/stormyork/Documents/NBA Information.db"
         conn = sqlite3.connect(db_path)
         cur = conn.cursor()
@@ -39,7 +39,7 @@ class PostGameStatsUtil:
         conn.close()
         return str(result[0])
 
-    def get_player_season_shot_chart(self, season):
+    def get_player_season_shot_chart(self: str, season: str) -> dict:
         shot_chart_data = shotchartdetail.ShotChartDetail(
             team_id=0,
             player_id=PostGameStatsUtil.get_player_id(self),
@@ -58,7 +58,7 @@ class PostGameStatsUtil:
         player_shot_chart.columns = headers
         return player_shot_chart[['LOC_X', 'LOC_Y']].to_dict()
 
-    def get_wnba_player_id(self):
+    def get_wnba_player_id(self:str) -> str:
         wnba_players = CommonAllPlayers(
             is_only_current_season=1,  # 1 active, 0 not active
             league_id='10',  # nba 00, g_league 20, wnba 10
@@ -73,7 +73,7 @@ class PostGameStatsUtil:
                 person_id = player_info['PERSON_ID'].iloc[0]
                 return str(person_id)
 
-    def get_gleague_player_id(self):
+    def get_gleague_player_id(self: str) -> str:
         gleague_players = CommonAllPlayers(
             is_only_current_season=1,  # 1 active, 0 not active
             league_id='20',  # nba 00, g_league 20, wnba 10
@@ -89,7 +89,7 @@ class PostGameStatsUtil:
                 return str(person_id)
 
 
-def get_league_leaders(self):
+def get_league_leaders(self: str) -> str:
     top_700 = leagueleaders.LeagueLeaders(season='2023-24', season_type_all_star='Regular Season',
                                           stat_category_abbreviation='PTS').get_data_frames()[0][:600]
 
