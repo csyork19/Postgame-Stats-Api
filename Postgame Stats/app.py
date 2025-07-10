@@ -336,6 +336,18 @@ def get_nfl_player_season_stats():
     return response
 
 
+@require_json
+@handle_exceptions
+@app.route('/api/nfl/team/seasonStats', methods=['POST'])
+def get_nfl_team_season_stats():
+    team_name = request.get_json()['teamName']
+    season = request.get_json()['season']
+    logger.info(f"retrieving NFL team season stats - {team_name}")
+    response = NFLStats.NFLTeamStats.get_nfl_team_stats(team_name, season)
+    logger.info(f"retrieved NFL team season stats - {team_name}")
+    return response
+
+
 
 
 if __name__ == '__main__':
