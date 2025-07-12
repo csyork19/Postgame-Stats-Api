@@ -360,7 +360,7 @@ def get_nfl_player_receiving_season_stats():
     seasonType = request.get_json()['seasonType']
     logger.info(f"retrieving NFL player receiving season stats - {player_name}")
     response = NFLStats.NFLPlayerStats.get_nfl_player_receiving_stats(player_name, season, seasonType)
-    logger.info(f"retrieved NFL player season stats - {player_name}")
+    logger.info(f"retrieved NFL player receiving season stats - {player_name}")
     return response
 
 
@@ -382,9 +382,20 @@ def get_nfl_team_season_stats():
 def get_ncaa_player_season_stats():
     team_name = request.get_json()['teamName']
     season = request.get_json()['season']
-    logger.info(f"retrieving NFL team season stats - {team_name}")
+    logger.info(f"retrieving NCAA Mens Player season stats - {team_name}")
     response = NCAAStats.NCAAPlayerStats.get_player_season_stats(team_name, season)
-    logger.info(f"retrieved NFL team season stats - {team_name}")
+    logger.info(f"retrieved NCAA Mens Player season stats - {team_name}")
+    return response
+
+@require_json
+@handle_exceptions
+@app.route('/api/ncaam/team/seasonStats', methods=['POST'])
+def get_ncaa_team_season_stats():
+    team_name = request.get_json()['teamName']
+    season = request.get_json()['season']
+    logger.info(f"retrieving NCAA Mens Player season stats - {team_name}")
+    response = NCAAStats.NCAATeamStats.get_team_season_stats(team_name, season)
+    logger.info(f"retrieved NCAA Mens Player season stats - {team_name}")
     return response
 
 
