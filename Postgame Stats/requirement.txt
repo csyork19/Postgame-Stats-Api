@@ -1,0 +1,32 @@
+# Core Data Handling
+pandas
+numpy
+requests
+beautifulsoup4
+scipy
+matplotlib
+seaborn
+tqdm
+pillow
+
+cbbpy
+
+# NBA Stats API
+nba_api
+
+# NFL Data
+nfl_data_py
+
+# Flask
+flask
+flask-cors
+
+# Authentication
+Flask>=2.0,<3.0
+Flask-JWT-Extended<5.0
+Flask-SQLAlchemy<3.0
+
+
+# Optional / used in some visuals
+# (You may omit these if not using images/annotations)
+# matplotlib is already included above

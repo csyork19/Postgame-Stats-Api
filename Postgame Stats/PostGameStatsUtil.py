@@ -8,7 +8,7 @@ from nba_api.stats.static import players
 
 class PostGameStatsUtil:
     def get_player_id(self: str) -> str:
-        db_path = "/Users/stormyork/Documents/NBA Information.db"
+        db_path = "NBA Information.db"
         conn = sqlite3.connect(db_path)
         cur = conn.cursor()
 
@@ -59,19 +59,23 @@ class PostGameStatsUtil:
         return player_shot_chart[['LOC_X', 'LOC_Y']].to_dict()
 
     def get_wnba_player_id(self:str) -> str:
-        wnba_players = CommonAllPlayers(
-            is_only_current_season=1,  # 1 active, 0 not active
-            league_id='10',  # nba 00, g_league 20, wnba 10
-            season='2024-25'  # change year(s) if needed
-        ).get_data_frames()[0]
+        db_path = "/Users/stormyork/Documents/NBA Information.db"
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
 
-        sorted_wnba_players = wnba_players['DISPLAY_FIRST_LAST']
+        # Case-insensitive match
+        cur.execute("""
+                    SELECT person_id
+                    FROM wnba_players
+                    WHERE LOWER(display_first_last) = LOWER(?)
+                """, (self,))
 
-        for player in sorted_wnba_players:
-            if player == self:
-                player_info = wnba_players[wnba_players['DISPLAY_FIRST_LAST'] == player]
-                person_id = player_info['PERSON_ID'].iloc[0]
-                return str(person_id)
+        result = cur.fetchone()
+        conn.close()
+        return str(result[0])
+
+
+
 
     def get_gleague_player_id(self: str) -> str:
         gleague_players = CommonAllPlayers(

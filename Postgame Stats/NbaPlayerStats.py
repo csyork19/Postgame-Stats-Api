@@ -1,4 +1,5 @@
 import pandas as pd
+from flask import jsonify
 from nba_api.stats.endpoints import playergamelog, playercareerstats, BoxScoreAdvancedV2
 from nba_api.stats.static import players
 from nba_api.stats.endpoints import BoxScoreTraditionalV2
@@ -13,16 +14,20 @@ nba_player_season_average = None
 
 
 def get_glegaue_player_season_stats(self):
-    gleague_player_logs = playergamelog.PlayerGameLog(
-        player_id=PostGameStatsUtil.PostGameStatsUtil.get_gleague_player_id(self))
-    gleague_player_logs_df = gleague_player_logs.get_data_frames()[0]
-    return gleague_player_logs_df.to_dict(orient="records")
+    try:
+        gleague_player_logs = playergamelog.PlayerGameLog(
+            player_id=PostGameStatsUtil.PostGameStatsUtil.get_gleague_player_id(self))
+        gleague_player_logs_df = gleague_player_logs.get_data_frames()[0]
+        return gleague_player_logs_df.to_dict(orient="records")
+    except Exception as e:
+        return jsonify({'error': 'Error Retrieving GLEAGUE Player STATS'}), 500
 
 
 def get_wnba_player_season_stats(self):
     wnba_player_logs = playergamelog.PlayerGameLog(
         player_id=PostGameStatsUtil.PostGameStatsUtil.get_wnba_player_id(self),
-        league_id_nullable='10'
+        league_id_nullable='10',
+        season='2025-26'
     )
     wnba_player_logs_df = wnba_player_logs.get_data_frames()[0]
     return wnba_player_logs_df.to_dict(orient="records")

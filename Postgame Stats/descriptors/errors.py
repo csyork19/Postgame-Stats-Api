@@ -19,9 +19,9 @@ def handle_exceptions(func):
         try:
             return func(*args, **kwargs)
         except HTTPException as e:
-            return jsonify({'error': e.description}), e.code
+            return jsonify({'error asdfasdf': e.description}), e.code
         except Exception as e:
-            return jsonify({'error': 'Internal server error'}), 500
+            return jsonify({'error': 'Internal server error hello TF'}), 500
 
     wrapper.__name__ = func.__name__
     return wrapper
