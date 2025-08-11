@@ -3,7 +3,6 @@ import sqlite3
 
 import pandas as pd
 from nba_api.stats.endpoints import leagueleaders, shotchartdetail, CommonAllPlayers
-from nba_api.stats.static import players
 
 
 class PostGameStatsUtil:

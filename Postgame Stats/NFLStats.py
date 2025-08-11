@@ -70,6 +70,7 @@ class NFLPlayerStats:
 
         nfl_seasonal_data = nfl.import_seasonal_data([int(season)], "REG")
 
+
         # Get player ID from PBP data
         nfl_player_id = None
         for _, row in nfl_pbp_data.iterrows():
@@ -83,25 +84,6 @@ class NFLPlayerStats:
         else:
             player_season_data = None
             print(f"Player ID not found for {player_name}")
-        # nfl_player_stats = nfl_pbp_data[nfl_pbp_data['fantasy_player_name'] == name_map.get(player_name)]
-        # nfl_player_id = nfl_pbp_data[nfl_pbp_data['id'] == name_map.get(player_name)]
-        #
-        # nfl_passer_player_id = nfl_pbp_data[nfl_pbp_data['passer_player_id']]
-        # nfl_rusher_player_id = nfl_pbp_data[nfl_pbp_data['rusher_player_id']]
-        # nfl_receiver_player_id = nfl_pbp_data[nfl_pbp_data['receiver_player_id']]
-        #
-        #
-        # filtered_nfl_player_stats = nfl_player_stats.groupby(player_position).agg({
-        #     'passing_yards': 'sum',
-        #     'air_yards': 'sum',
-        #     'yards_gained': 'sum',
-        #     'qb_scramble': 'sum',
-        #     'fantasy_player_id': 'first'
-        # }).reset_index()
-        # fantasy_player_id = filtered_nfl_player_stats['fantasy_player_id']
-        #
-        # return filtered_nfl_player_stats.to_dict()
-
         return player_season_data.to_dict()
 
     def get_nfl_player_receiving_stats(player_name, season, player_position):

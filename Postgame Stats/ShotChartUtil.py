@@ -75,6 +75,23 @@ def get_nba_player_shot_chart_information(player_name: str, season_id: str, seas
     return shot_chart_list[0], shot_chart_list[1], nba_player_id
 
 
+def get_wnba_player_shot_chart_information(player_name: str, season_id: str, season_type: str, game_id: str):
+    nba_player_id = PostGameStatsUtil.PostGameStatsUtil.get_wnba_player_id(player_name)
+    career = playercareerstats.PlayerCareerStats(player_id=nba_player_id,
+                                                 league_id_nullable="10")
+    career_df = career.get_data_frames()[0]
+    team_id = career_df[career_df['SEASON_ID'] == season_id]['TEAM_ID']
+    shot_chart_list = shotchartdetail.ShotChartDetail(
+        team_id=team_id,
+        player_id=nba_player_id,
+        league_id='10',
+        season_type_all_star=season_type,
+        season_nullable=season_id,
+        game_id_nullable=game_id if game_id is not None else None,
+        context_measure_simple="FGA").get_data_frames()
+    return shot_chart_list[0], shot_chart_list[1], nba_player_id
+
+
 def get_team_shot_chart_updated(team_name: str, season_id: str, season_type: str, game_id: str):
     nba_team_id = PostGameStatsUtil.PostGameStatsUtil.get_team_id(team_name)
     shot_chart_list = shotchartdetail.ShotChartDetail(
@@ -203,7 +220,8 @@ def draw_nba_court(ax=None, color="white", lw=1, shotzone=False, outer_lines=Fal
 
 
 def draw_shot_chart(data, player_name: str, year: str, title="", color="b", xlim=(-250, 250), ylim=(422.5, -47.5),
-                    line_color="blue", court_color="black", court_lw=2, outer_lines=False, flip_court=True, gridsize=None,
+                    line_color="blue", court_color="black", court_lw=2, outer_lines=False, flip_court=True,
+                    gridsize=None,
                     ax=None, despine=False, player_image_path='curry.png', **kwargs):
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 11))  # Ensure it draws a figure
@@ -301,7 +319,7 @@ def sized_hexbin(ax, hc, hc2, cmap, norm):
 
 def hexmap_chart(nba_shot_data: any, nba_league_average_shots: any, nba_player_name: str, nba_season: str,
                  season_type: str, player_id: str, title="", color="b", xlim=(-250, 250), ylim=None, line_color="black",
-                 court_color="#FFFFFF", court_lw=2, outer_lines=False,flip_court=True, gridsize=None, ax=None,
+                 court_color="#FFFFFF", court_lw=2, outer_lines=False, flip_court=True, gridsize=None, ax=None,
                  despine=False, **kwargs):
     # 1. Set default y-axis limits
     ylim = (470, -60)  # Original court orientation (hoop at y=0)
@@ -1046,7 +1064,7 @@ def plot_nba_player_shot_chart_data_v2(ax, data, player):
         if zone_name in zone_fgp and zone_fgp[zone_name]['FGA'] > 0:
             fgp = zone_fgp[zone_name]['FGP']
             y_center = flip_y(-y_court)  # Flip y coordinate here
-            ax.text(x_center, -420 + y_center, f'{fgp:.0f}%', ha='center', va='center',fontsize=20, color='black',
+            ax.text(x_center, -420 + y_center, f'{fgp:.0f}%', ha='center', va='center', fontsize=20, color='black',
                     weight='bold')
     return boundaries, cmap
 
@@ -1278,23 +1296,23 @@ def create_shot_average_and_shot_frequency_legend(boundaries, cmap, fig):
     for i, label in enumerate(labels):
         radius = min_radius + (max_radius - min_radius) * (i / (color_steps - 1))
 
-        # Optional: derive color from boundaries (currently neutral)
         boundary_value = boundaries[i + 1]
         normalized_value = (boundary_value - boundaries[0]) / (boundaries[-1] - boundaries[0])
-        color = cmap(0.5)  # mid-color from colormap
+        color = cmap(0.5)  # Mid-color for now
 
-        y = y_start - i * spacing
-        hexagon = RegularPolygon((0.3, y), numVertices=6, radius=radius,
+        x = x_start + i * spacing  # ← Change y-based spacing to x-based
+        hexagon = RegularPolygon((x, 0.3), numVertices=6, radius=radius,
                                  orientation=np.radians(0), facecolor=color, edgecolor='white')
         freq_legend_ax.add_patch(hexagon)
 
         if label:
-            freq_legend_ax.text(0.6, y, label, ha='left', va='center', fontsize=8,
+            freq_legend_ax.text(x, 0.6, label, ha='center', va='bottom', fontsize=8,
                                 color='gray', fontweight='bold', fontfamily='Arial')
 
-    freq_legend_ax.set_xlim(0, 1.5)
-    freq_legend_ax.set_ylim(0, y_start + spacing)
-    freq_legend_ax.text(0.3, y_start + spacing * 0.6, 'Frequency', ha='left', va='bottom',
+    freq_legend_ax.set_xlim(x_start - spacing, x_start + spacing * len(labels))
+    freq_legend_ax.set_ylim(0, 1.0)
+
+    freq_legend_ax.text(x_start, 0.9, 'Frequency', ha='left', va='bottom',
                         fontsize=12, color='gray', fontweight='bold', fontfamily='Arial')
 
 
@@ -1463,6 +1481,11 @@ def create_player_heatmap(player_name, season, season_type, game_id):
     heatmap(shot_df, player_name, season, season_type, player_id)
     return f"{season_type} Heat Map created for {player_name} for season: {season} during the {season_type}."
 
+def create_wnba_player_heatmap(player_name, season, season_type, game_id):
+    wnba_shot_chart_df, league_avg, player_id = get_wnba_player_shot_chart_information(player_name, season, season_type, game_id)
+    heatmap(wnba_shot_chart_df, player_name, season, season_type, player_id)
+    return f"{season_type} Heat Map created for {player_name} for season: {season} during the {season_type}."
+
 
 def create_team_heatmap(team_name, season, season_type, game_id):
     team_shot_chart_df, team_league_avg = get_team_shot_chart_updated(team_name, season, season_type, game_id)
@@ -1478,7 +1501,8 @@ def create_updated_player_regular_season_hexmap_shot_chart(player_name, season, 
 
 def create_team_playoffs_finals_per_game_hexmap_shot_chart(player_name, season, game_id):
     team_finals_shot_chart_df = get_nba_finals_team_per_game_shot_chart_information(player_name, season, game_id)
-    player_playoff_shotchart_df, playoff_leage_avg = get_nba_finals_team_per_game_shot_chart_information(player_name, season)
+    player_playoff_shotchart_df, playoff_leage_avg = get_nba_finals_team_per_game_shot_chart_information(player_name,
+                                                                                                         season)
     hexmap_finals_playoff_chart(team_finals_shot_chart_df, playoff_leage_avg, player_name, season, game_id)
     return f"Hex Map finals playoff created for {player_name} during season: {season} for game id {game_id}"
 
