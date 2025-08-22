@@ -1,90 +1,105 @@
-import sqlite3
 
 import nfl_data_py as nfl
 import pandas as pd
+import sqlite3
+
 
 
 class NFLPlayerStats:
     def get_nfl_player_stats(player_name, season, player_position):
-        nfl_pbp_data = nfl.import_pbp_data([int(season)])
-        nfl_seasonal_data = nfl.import_seasonal_data([int(season)], "REG")
-        # db_path = "/Users/stormyork/Documents/NFL Information.db"
-        # conn = sqlite3.connect(db_path)
-        # cur = conn.cursor()
-        #
-        # query = """
-        #        SELECT
-        #            MIN(fantasy_player_id) AS fantasy_player_id,
-        #            SUM(passing_yards) AS total_passing_yards,
-        #            SUM(air_yards) AS total_air_yards,
-        #            SUM(rushing_yards) AS total_rushing_yards,
-        #            SUM(receiving_yards) AS total_receiving_yards
-        #        FROM NFL_2024_PBP
-        #        WHERE id = (
-        #            SELECT id
-        #            FROM NFL_2024_PBP
-        #            WHERE LOWER(fantasy_player_name) = LOWER(?)
-        #              AND fantasy_player_name IS NOT NULL
-        #              AND fantasy_player_name != ''
-        #            ORDER BY id ASC
-        #            LIMIT 1
-        #        )
-        #    """
-        #
-        # df = pd.read_sql_query(query, conn, params=(player_name))
-        # conn.close()
-        # # result = cur.fetchone()
-        # # conn.close()
-        # return df
-
-
-
-        fantasy_map = {}
-        # for row in nfl_pbp_data.items():
-        #     fantasy_id = row['fantasy_player_id']
-        #     fantasy_player = row['fantasy']
-        #     if fantasy_id is not None and fantasy_player is not None:
-        #         if not fantasy_map[fantasy_id]:
-        #             fantasy_map[fantasy_id] = fantasy_player # B. Young
-
         nfl_players = nfl.import_players()
         nfl_players_name = nfl_players['display_name']
         name_map = {}
 
-        for player in nfl_players_name.items():
-            name = player[1]
-            if name is not None:
-                full_name = name
-                abbr_name = None
-                for index, row in nfl_players.iterrows():
-                    short_name = row['short_name'] if pd.notna(row['short_name']) else None
-                    display_name = row['display_name'] if pd.notna(row['display_name']) else None
-                    if short_name is not None and display_name is not None and player_name == display_name:
-                        nfl_player = short_name
-                        abbr_name = nfl_player
-                        full_name = display_name
-                        break
+        def save_nfl_players_to_db(nfl_players, db_path='/Users/stormyork/Documents/NFL Information.db'):
+            conn = sqlite3.connect(db_path)
+            nfl_players.to_sql('nfl_players', conn, if_exists='replace', index=False)
+            conn.close()
 
-                name_map[full_name] = abbr_name
-                break
+        save_nfl_players_to_db(nfl_players)
+        #nfl_pbp_data = nfl.import_pbp_data([int(season)])
 
-        nfl_seasonal_data = nfl.import_seasonal_data([int(season)], "REG")
+        # for player in nfl_players_name.items():
+        #     name = player[1]
+        #     if name is not None:
+        #         full_name = name
+        #         abbr_name = None
+        #         for index, row in nfl_players.iterrows():
+        #             short_name = row['short_name'] if pd.notna(row['short_name']) else None
+        #             display_name = row['display_name'] if pd.notna(row['display_name']) else None
+        #             if short_name is not None and display_name is not None and player_name == display_name:
+        #                 nfl_player = short_name
+        #                 abbr_name = nfl_player
+        #                 full_name = display_name
+        #                 break
+        #
+        #         name_map[full_name] = abbr_name
+        #         break
+
+        conn = sqlite3.connect('/Users/stormyork/Documents/NFL Information.db')
+        query = """
+               SELECT short_name
+               FROM nfl_players
+               WHERE LOWER(display_name) = LOWER(?)
+                 AND display_name IS NOT NULL
+                 AND display_name != ''
+            """
+        cur = conn.cursor()
+        cur.execute(query, (player_name,))
+        result = cur.fetchone()
+        conn.close()
+        short_name = result[0] if result else None
+
+
+        # TODO: Add player name map to a DB
+        # TODO: Add nfl season data to a DB
+        # TODO: Query the information from the DB
+        # nfl_seasonal_data = nfl.import_seasonal_data([int(season)], "REG")
+
+        def get_player_season_data_from_db(nfl_player_id, season,
+                                           db_path='/Users/stormyork/Documents/NFL Information.db'):
+            conn = sqlite3.connect(db_path)
+            query = """
+                SELECT *
+                FROM nfl_seasonal_data
+                WHERE player_id = ?
+                  AND season = ?
+            """
+            df = pd.read_sql_query(query, conn, params=(nfl_player_id, season))
+            conn.close()
+            return df.to_dict()
+
 
 
         # Get player ID from PBP data
-        nfl_player_id = None
-        for _, row in nfl_pbp_data.iterrows():
-            if row['fantasy_player_name'] == name_map.get(player_name):
-                nfl_player_id = row['id']  # or 'id' if that’s the correct column
-                break  # stop once found
 
-        # Filter the seasonal data for this player
+        # Select player id from PBP where fantasy_player_name column equals a variable I provide
+
+
+        mapped_name = short_name
+        conn = sqlite3.connect('/Users/stormyork/Documents/NFL Information.db')
+        query = """
+            SELECT id
+            FROM NFL_2024_PBP
+            WHERE LOWER(fantasy_player_name) = LOWER(?)
+              AND fantasy_player_name IS NOT NULL
+              AND fantasy_player_name != ''
+            ORDER BY id ASC
+            LIMIT 1
+        """
+        cur = conn.cursor()
+        cur.execute(query, (mapped_name,))
+        result = cur.fetchone()
+        conn.close()
+        nfl_player_id = result[0] if result else None
+
         if nfl_player_id:
-            player_season_data = nfl_seasonal_data[nfl_seasonal_data['player_id'] == nfl_player_id]
+            nfl_seasonal_data = get_player_season_data_from_db(nfl_player_id, season)
+            # player_season_data = nfl_seasonal_data[nfl_seasonal_data['player_id'] == nfl_player_id]
         else:
             player_season_data = None
             print(f"Player ID not found for {player_name}")
-        return player_season_data.to_dict()
+        return nfl_seasonal_data
 
     def get_nfl_player_receiving_stats(player_name, season, player_position):
         nfl_pbp_data = nfl.import_pbp_data([int(season)])
