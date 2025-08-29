@@ -1,5 +1,5 @@
 
-# PostGame Stats API  
+# Post Game Stats API  
 
 PostGame Stats is a **Flask-based REST API** that provides free access to comprehensive **NBA statistics, NFL Statstics, NCAAM Statistics**. The API offers detailed player and team data, as well as visualized shot charts, making it an ideal resource for analysts, developers, and sports enthusiasts looking to integrate stats into their projects.  
 
