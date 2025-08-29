@@ -5,33 +5,18 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
+
 class NCAAPlayerStats:
-    def get_player_season_stats(self: str, game_id: str) -> dict:
-        return "testing"
+    def get_player_season_stats(self: str, game_id: str) -> str:
+        return "NOT IMPLEMENTED"
 
 
 class NCAATeamStats:
-    def get_team_season_stats(self: str, game_id: str) -> dict:
-        url = "https://www.espn.com/mens-college-basketball/teams"
+    def get_team_season_stats(self: str, year: str) -> dict:
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
             "Accept-Language": "en-US,en;q=0.9",
         }
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        team_names = {}
-        for section in soup.find_all("section", class_="TeamLinks flex items-center"):
-            h2_tag = section.find("h2", class_="di clr-gray-01 h5")
-            if h2_tag:
-                team_name = h2_tag.text.strip()
-                url = h2_tag.parent.attrs.get('href')
-                match = re.search(r'/id/(\d+)', url)
-                team_id = match.group(1) if match else None
-                team_names[team_name] = team_id
-
-        import pandas as pd
-
         conn = sqlite3.connect('/Users/stormyork/Documents/NCAA Information.db')
         query = """
                       SELECT team_id
@@ -44,12 +29,9 @@ class NCAATeamStats:
         conn.close()
         ncaa_mens_team_id = result[0] if result else None
 
-
-
-        # ncaa_team_id = team_names.get(self)
         players = []
         if ncaa_mens_team_id:
-            ncaa_mens_team_stats_url = f"https://www.espn.com/mens-college-basketball/team/stats/_/id/{ncaa_mens_team_id}"
+            ncaa_mens_team_stats_url = f"https://www.espn.com/mens-college-basketball/team/stats/_/id/{ncaa_mens_team_id}/season/{year}"
             ncaa_mens_team_stats_response = requests.get(ncaa_mens_team_stats_url, headers=headers)
             ncaa_player_soup = BeautifulSoup(ncaa_mens_team_stats_response.text, "html.parser")
             rows = ncaa_player_soup.select(".Table__Scroller table tbody tr")
@@ -57,9 +39,6 @@ class NCAATeamStats:
 
             # Loop through rows and collect stats
             players = {}
-
-            players = {}
-
             for name_tag, row in zip(names, rows):
                 cells = row.find_all("span", {"data-testid": "statCell"})
                 if len(cells) >= 11:  # Ensure it's a stat row and all stats are present

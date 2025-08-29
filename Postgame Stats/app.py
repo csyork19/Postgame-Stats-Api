@@ -491,13 +491,31 @@ def get_nfl_player_receiving_season_stats() -> 'flask.Response':
 
 @require_json
 @handle_exceptions
-@app.route('/api/nfl/team/seasonStats', methods=['POST'])
-def get_nfl_team_season_stats() -> 'flask.Response':
+@app.route('/api/nfl/team/seasonPBPStats', methods=['POST'])
+def get_nfl_pbp_team_season_stats() -> 'flask.Response':
     try:
         team_name = request.get_json()['teamName']
         season = request.get_json()['season']
         logger.info(f"retrieving NFL team season stats - {team_name}")
-        response = NFLStats.NFLTeamStats.get_nfl_team_stats(team_name, season)
+        response = NFLStats.NFLTeamStats.get_nfl_pbp_team_stats(team_name, season)
+        logger.info(f"retrieved NFL team season stats - {team_name}")
+        return response
+    except Exception as e:
+        logger.info(f"***** Error retrieving NFL team season stats *****")
+        return jsonify("Error retrieving NFL team season stats")
+
+@require_json
+@handle_exceptions
+@app.route('/api/nfl/team/seasonStats', methods=['POST'])
+def get_nfl_team_season_stats() -> 'flask.Response':
+    try:
+        team_name = request.get_json()['teamName']
+        season = request.get_json().get('season', [])
+        if not isinstance(season, list):
+            season = [season]
+        logger.info(f"retrieving NFL team season stats - {team_name}")
+        season_type = 'REG'
+        response = NFLStats.NFLTeamStats.get_nfl_team_stats(season, season_type)
         logger.info(f"retrieved NFL team season stats - {team_name}")
         return response
     except Exception as e:
@@ -511,7 +529,9 @@ def get_nfl_team_season_stats() -> 'flask.Response':
 def get_ncaa_player_season_stats() -> 'flask.Response':
     try:
         team_name = request.get_json()['teamName']
-        season = request.get_json()['season']
+        season = request.get_json().get('season', [])
+        if not isinstance(season, list):
+            season = [season]
         logger.info(f"retrieving NCAA Mens Player season stats - {team_name}")
         response = NCAAStats.NCAAPlayerStats.get_player_season_stats(team_name, season)
         logger.info(f"retrieved NCAA Mens Player season stats - {team_name}")

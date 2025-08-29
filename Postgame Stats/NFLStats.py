@@ -118,16 +118,26 @@ class NFLPlayerStats:
 
 class NFLTeamStats:
 
-    def get_nfl_team_stats(team_name, season):
+    def get_nfl_pbp_team_stats(team_name, season):
         nfl_pbp_data = nfl.import_pbp_data([int(season)])
         nfl_home_team_stats = nfl_pbp_data[nfl_pbp_data['home_team'] == team_name]
         nfl_away_team_stats = nfl_pbp_data[nfl_pbp_data['away_team'] == team_name]
         nfl_team_season_stats = pd.concat([nfl_home_team_stats, nfl_away_team_stats])
+        return nfl_team_season_stats.to_dict()
 
-        nfl_team_stat_columns = ['passing_yards', 'air_yards', 'yards_gained', 'qb_scramble', 'shotgun', 'qb_dropback',
-                                 'qb_scramble', 'air_yards', 'yards_after_catch']
-        for column in nfl_team_stat_columns:
-            nfl_team_season_stats[column] = pd.to_numeric(nfl_team_season_stats[column], errors='coerce')
-        filtered_nfl_team_stats = nfl_team_season_stats[nfl_team_stat_columns].sum(skipna=True).to_frame().T
-        filtered_nfl_team_stats['team'] = team_name
-        return filtered_nfl_team_stats.to_dict()
+    def get_nfl_team_stats(self, season_type):
+        years = self
+
+        nfl_seasonal_data = nfl.import_seasonal_data(years if isinstance(years, (list, range)) else [years],
+                                                     season_type)
+        return nfl_seasonal_data.to_dict()
+
+
+
+        # nfl_team_stat_columns = ['passing_yards', 'air_yards', 'yards_gained', 'qb_scramble', 'shotgun', 'qb_dropback',
+        #                          'qb_scramble', 'air_yards', 'yards_after_catch']
+        # for column in nfl_team_stat_columns:
+        #     nfl_team_season_stats[column] = pd.to_numeric(nfl_team_season_stats[column], errors='coerce')
+        # filtered_nfl_team_stats = nfl_team_season_stats[nfl_team_stat_columns].sum(skipna=True).to_frame().T
+        # filtered_nfl_team_stats['team'] = team_name
+        # return filtered_nfl_team_stats.to_dict()
