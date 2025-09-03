@@ -9,7 +9,13 @@ import NbaPlayerStats
 import TeamStats
 import ShotChartUtil
 import PostGameStatsUtil
-from descriptors.errors import handle_exceptions, require_json
+from decorators.errors import handle_exceptions, require_json
+import sqlite3
+import jwt
+import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+
+from decorators.jwt import jwt_required
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +27,72 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(message)s',
 )
 
+SECRET_KEY = "my_dirty_little_secret"  # All American Rejects :)
 
-@require_json
-@handle_exceptions
+
+def init_db():
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+
+init_db()
+
+
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    if not username or not password:
+        return jsonify({'error': 'Username and password required'}), 400
+
+    hashed_password = generate_password_hash(password, method="pbkdf2:sha256")
+    try:
+        conn = sqlite3.connect('users.db')
+        c = conn.cursor()
+        c.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, hashed_password))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'User registered successfully'}), 201
+    except sqlite3.IntegrityError:
+        return jsonify({'error': 'Username already exists'}), 409
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    if not username or not password:
+        return jsonify({'error': 'Username and password required'}), 400
+
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute('SELECT password FROM users WHERE username = ?', (username,))
+    row = c.fetchone()
+    conn.close()
+    if row and check_password_hash(row[0], password):
+        token = jwt.encode({
+            'username': username,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+        }, SECRET_KEY, algorithm='HS256')
+        return jsonify({'token': token}), 200
+    else:
+        return jsonify({'error': 'Invalid credentials'}), 401
+
+
 @app.route('/api/nba/player/id', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_player_id() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -37,9 +105,9 @@ def get_player_id() -> 'flask.Response':
         return jsonify("Error retrieving player id")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/player/seasonStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_player_season_stats() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -52,9 +120,9 @@ def get_player_season_stats() -> 'flask.Response':
         return jsonify("Error retrieving player season stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/player/advancedSeasonStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_player_advanced_season_stats() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -70,9 +138,9 @@ def get_player_advanced_season_stats() -> 'flask.Response':
         return jsonify("Error retrieving player advanced season stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/player/advancedAverageSeasonStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_player_average_advanced_season_stats() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -88,9 +156,9 @@ def get_player_average_advanced_season_stats() -> 'flask.Response':
         return jsonify("Error retrieving player advanced average season stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/player/perSeasonStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_player_any_season_stats() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -104,9 +172,9 @@ def get_player_any_season_stats() -> 'flask.Response':
         return jsonify("Error retrieving player per season stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/player/perSeasonAverages', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_nba_player_season_averages() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -120,9 +188,9 @@ def get_nba_player_season_averages() -> 'flask.Response':
         return jsonify("Error retrieving player per season averages")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/player/careerSeasonTotal', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_player_career_stats() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -135,9 +203,9 @@ def get_player_career_stats() -> 'flask.Response':
         return jsonify("Error retrieving player career stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/player/playoffStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_player_playoff_stats() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -151,9 +219,9 @@ def get_player_playoff_stats() -> 'flask.Response':
         return jsonify("Error retrieving player playoff stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/player/statsPerGame', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_player_stats_per_game() -> 'flask.Response':
     try:
         game_id = request.get_json()['gameId']
@@ -166,9 +234,9 @@ def get_player_stats_per_game() -> 'flask.Response':
         return jsonify("Error retrieving player per stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/player/shotChartCoordinates', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_player_short_chart_coordinates() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -182,9 +250,9 @@ def get_player_short_chart_coordinates() -> 'flask.Response':
         return jsonify("Error retrieving player shot chart coordinates")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/player/hexmap', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def create_player_hexmap() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -202,9 +270,9 @@ def create_player_hexmap() -> 'flask.Response':
         return jsonify("Error retrieving player hexmap")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/player/heatmap', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def create_player_heatmap() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -220,9 +288,9 @@ def create_player_heatmap() -> 'flask.Response':
         return jsonify("Error retrieving player heatmap")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/team/heatmap', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def create_team_heatmap() -> 'flask.Response':
     try:
         team_name = request.get_json()['teamName']
@@ -238,9 +306,9 @@ def create_team_heatmap() -> 'flask.Response':
         return jsonify("Error retrieving team heatmap")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/team/hexmap', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def create_team_hexmap() -> 'flask.Response':
     try:
         team_name = request.get_json()['teamName']
@@ -256,9 +324,9 @@ def create_team_hexmap() -> 'flask.Response':
         return jsonify("Error retrieving team hexmap")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/team/defensiveHexmap', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def create_team_defensive_hexmap() -> 'flask.Response':
     try:
         team_name = request.get_json()['teamName']
@@ -274,9 +342,9 @@ def create_team_defensive_hexmap() -> 'flask.Response':
         return jsonify("Error retrieving player team defensive hexmap")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/team/seasonStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_team_season_stats() -> 'flask.Response':
     try:
         data = request.get_json()
@@ -291,9 +359,9 @@ def get_team_season_stats() -> 'flask.Response':
         return jsonify("Error retrieving team seasonStats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/team/seasonAverages', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_team_season_average_stats() -> 'flask.Response':
     try:
         data = request.get_json()
@@ -308,9 +376,9 @@ def get_team_season_average_stats() -> 'flask.Response':
         return jsonify("Error retrieving team season averages")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/team/playoffStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_team_playoff_stats() -> 'flask.Response':
     try:
         data = request.get_json()
@@ -325,9 +393,9 @@ def get_team_playoff_stats() -> 'flask.Response':
         return jsonify("Error retrieving team playoff stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/team/playoffStatsAverage', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_team_playoff_average_stats() -> 'flask.Response':
     try:
         data = request.get_json()
@@ -342,9 +410,9 @@ def get_team_playoff_average_stats() -> 'flask.Response':
         return jsonify("Error retrieving team playoff stats average")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nba/team/finalsHexmap', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def create_team_playoff_finals_per_game_hexmap_shot_chart() -> 'flask.Response':
     try:
         data = request.get_json()
@@ -360,9 +428,9 @@ def create_team_playoff_finals_per_game_hexmap_shot_chart() -> 'flask.Response':
         return jsonify("Error retrieving player team finals hexmap")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/wnba/player/id', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_wnba_player_id() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -375,9 +443,9 @@ def get_wnba_player_id() -> 'flask.Response':
         return jsonify("Error retrieving wnba player id")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/wnba/player/seasonStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_wnba_player_season_stats() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -390,9 +458,9 @@ def get_wnba_player_season_stats() -> 'flask.Response':
         return jsonify("Error retrieving wnba player season stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/wnba/player/hexmap', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_wnba_player_hexmap() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -408,9 +476,9 @@ def get_wnba_player_hexmap() -> 'flask.Response':
         return jsonify("Error retrieving wnba player hexmap")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/gleague/player/id', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_gleague_player_id() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -423,9 +491,9 @@ def get_gleague_player_id() -> 'flask.Response':
         return jsonify("Error retrieving gleague player id")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/gleague/player/seasonStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_gleague_player_season_stats() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -438,9 +506,9 @@ def get_gleague_player_season_stats() -> 'flask.Response':
         return jsonify("Error retrieving gleague player season stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nfl/player/seasonStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_nfl_player_season_stats() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -455,9 +523,9 @@ def get_nfl_player_season_stats() -> 'flask.Response':
         return jsonify("Error retrieving NFL player seasons stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nfl/player/rushingSeasonStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_nfl_player_rushing_season_stats() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -472,9 +540,9 @@ def get_nfl_player_rushing_season_stats() -> 'flask.Response':
         return jsonify("Error retrieving NFL rushing season stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nfl/player/receivingSeasonStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_nfl_player_receiving_season_stats() -> 'flask.Response':
     try:
         player_name = request.get_json()['playerName']
@@ -489,9 +557,9 @@ def get_nfl_player_receiving_season_stats() -> 'flask.Response':
         return jsonify("Error retrieving NFL player receiving season stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/nfl/team/seasonPBPStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_nfl_pbp_team_season_stats() -> 'flask.Response':
     try:
         team_name = request.get_json()['teamName']
@@ -504,9 +572,10 @@ def get_nfl_pbp_team_season_stats() -> 'flask.Response':
         logger.info(f"***** Error retrieving NFL team season stats *****")
         return jsonify("Error retrieving NFL team season stats")
 
-@require_json
+
+@app.route('/api/ncaam/team/seasonStats', methods=['POST'])
+@jwt_required
 @handle_exceptions
-@app.route('/api/nfl/team/seasonStats', methods=['POST'])
 def get_nfl_team_season_stats() -> 'flask.Response':
     try:
         team_name = request.get_json()['teamName']
@@ -523,9 +592,9 @@ def get_nfl_team_season_stats() -> 'flask.Response':
         return jsonify("Error retrieving NFL team season stats")
 
 
-@require_json
+@app.route('/api/ncaam/team/seasonStats', methods=['POST'])
+@jwt_required
 @handle_exceptions
-@app.route('/api/ncaam/player/seasonStats', methods=['POST'])
 def get_ncaa_player_season_stats() -> 'flask.Response':
     try:
         team_name = request.get_json()['teamName']
@@ -541,9 +610,9 @@ def get_ncaa_player_season_stats() -> 'flask.Response':
         return jsonify("Error retrieving NCAA player season stats")
 
 
-@require_json
-@handle_exceptions
 @app.route('/api/ncaam/team/seasonStats', methods=['POST'])
+@jwt_required
+@handle_exceptions
 def get_ncaa_team_season_stats() -> 'flask.Response':
     try:
         team_name = request.get_json()['teamName']
