@@ -24,10 +24,47 @@ Follow the project on X - https://x.com/postgamestats
    ```  
 4. Access the API at `http://127.0.0.1:5000`.  
 
-## Example Endpoints  
-- **Player Stats**: `/api/nba/player/seasonAverages`  
-- **Team Stats**: `/api/team/seasonStats`  
-- **Team Playoff Ststs**: `/api/team/playoffStats`
+## API Endpoints
+### NBA
+- `POST /api/nba/player/id`
+- `POST /api/nba/player/seasonStats`
+- `POST /api/nba/player/advancedSeasonStats`
+- `POST /api/nba/player/advancedAverageSeasonStats`
+- `POST /api/nba/player/perSeasonStats`
+- `POST /api/nba/player/perSeasonAverages`
+- `POST /api/nba/player/careerSeasonTotal`
+- `POST /api/nba/player/playoffStats`
+- `POST /api/nba/player/statsPerGame`
+- `POST /api/nba/player/shotChartCoordinates`
+- `POST /api/nba/player/hexmap`
+- `POST /api/nba/player/heatmap`
+- `POST /api/nba/team/heatmap`
+- `POST /api/nba/team/hexmap`
+- `POST /api/nba/team/defensiveHexmap`
+- `POST /api/nba/team/seasonStats`
+- `POST /api/nba/team/seasonAverages`
+- `POST /api/nba/team/playoffStats`
+- `POST /api/nba/team/playoffStatsAverage`
+- `POST /api/nba/team/finalsHexmap`
+
+### WNBA
+- `POST /api/wnba/player/id`
+- `POST /api/wnba/player/seasonStats`
+- `POST /api/wnba/player/hexmap`
+
+### G League
+- `POST /api/gleague/player/id`
+- `POST /api/gleague/player/seasonStats`
+
+### NFL
+- `POST /api/nfl/player/seasonStats`
+- `POST /api/nfl/player/rushingSeasonStats`
+- `POST /api/nfl/player/receivingSeasonStats`
+- `POST /api/nfl/team/seasonPBPStats`
+- `POST /api/nfl/team/seasonStats`
+
+### NCAA Men's Basketball
+- `POST /api/ncaam/team/seasonStats`
 
 ## Sample Request
 - **Player Stats**: `/api/nba/player/perSeasonAverages`  
