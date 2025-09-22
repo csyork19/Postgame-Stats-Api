@@ -49,10 +49,7 @@ def get_nfl_player_receiving_season_stats() -> 'flask.Response':
 @handle_exceptions
 @with_json(required_fields=["teamName", "season"])
 def get_nfl_pbp_team_season_stats() -> 'flask.Response':
-    try:
-        team_name = request.get_json()['teamName']
-        season = request.get_json()['season']
-        response = NFLStats.NFLTeamStats.get_nfl_pbp_team_stats(team_name, season)
-        return response
-    except Exception as e:
-        return jsonify("Error retrieving NFL team season stats")
+    team_name = request.get_json()['teamName']
+    season = request.get_json()['season']
+    response = NFLStats.NFLTeamStats.get_nfl_pbp_team_stats(team_name, season)
+    return response
