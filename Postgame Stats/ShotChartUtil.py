@@ -25,6 +25,8 @@ import pandas as pd
 import time
 import matplotlib.pyplot as plt
 import os
+from matplotlib.path import Path   # ✅ not pathlib.Path
+
 
 sns.set_style('white')
 sns.set_color_codes()
@@ -283,38 +285,46 @@ def add_player_image_to_shot_chart(ax, player_image_path, player_name, xlim, yli
             print(f"Could not load image for player {player_id}: {e}")
 
 
+from matplotlib.path import Path
+from matplotlib.patches import PathPatch
+from matplotlib.collections import PatchCollection
+from scipy.stats import percentileofscore
+
 def sized_hexbin(ax, hc, hc2, cmap, norm):
     offsets = hc.get_offsets()
     orgpath = hc.get_paths()[0]
     verts = orgpath.vertices
     values1 = hc.get_array()
     values2 = hc2.get_array()
-    ma = values1.max()
+
     patches = []
+    filtered_list = [v for v in values1 if v != 0]
 
     for offset, val in zip(offsets, values1):
-        filtered_list = list(filter(lambda num: num != 0, values1))
-        if (int(val) == 0):
+        if int(val) == 0:
             continue
-        elif (percentileofscore(filtered_list, val) < 33.33):
+
+        pct = percentileofscore(filtered_list, val)
+        if pct < 33.33:
             v1 = verts * 0.3 + offset
-        elif (percentileofscore(filtered_list, val) > 69.99):
+        elif pct > 69.99:
             v1 = verts + offset
         else:
             v1 = verts * 0.6 + offset
 
+        # ✅ Correct: Path takes (vertices, codes)
         path = Path(v1, orgpath.codes)
         patch = PathPatch(path)
         patches.append(patch)
 
     pc = PatchCollection(patches, cmap=cmap, norm=norm)
-    # sets color
-    # so hexbin with C=data['FGP']
-    pc.set_array(values2)
+    pc.set_array(values2)  # sets color mapping
     ax.add_collection(pc)
+
     hc.remove()
     hc2.remove()
-    return pc  # ✅ This is key for colorbar to work!
+
+    return pc
 
 
 def hexmap_chart(nba_shot_data: any, nba_league_average_shots: any, nba_player_name: str, nba_season: str,
@@ -361,6 +371,7 @@ def hexmap_chart(nba_shot_data: any, nba_league_average_shots: any, nba_player_n
     assist, blocks, fg, fg3, plus_minus, points, rebounds, season, steals = add_player_stats_to_shot_chart(
         nba_player_name, nba_season, season_type, player_id)
     add_player_image_to_chart(ax, player_id, xlim, ylim)
+    add_project_logo_image_to_chart(ax, "right")
     add_shot_chart_header_info(assist, blocks, fg, fg3, fig, plus_minus, points, rebounds, season, steals,
                                nba_player_name, season_type, "black", "gray")
 
@@ -1012,6 +1023,37 @@ def add_player_image_to_chart(ax, player_id, xlim, ylim):
         print(f"Could not load image for player {player_id}: {e}")
 
 
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from PIL import Image
+from io import BytesIO
+import requests
+
+from pathlib import Path
+from PIL import Image
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+
+def add_project_logo_image_to_chart(ax):
+    # Build the path in a portable way
+    image_path = Path.home() / "Documents" / "Personal Projects" / "Postgame-Stats-Api" / "Postgame Stats" / "project_logo" / "PGS Logo_profile_pic-white.jpg"
+
+    try:
+        # Open directly from local path
+        img = Image.open(image_path).convert("RGBA")
+        imagebox = OffsetImage(img, zoom=0.6)
+
+        # Always place in bottom-right
+        ab = AnnotationBbox(
+            imagebox, (1.10, .05), xycoords='axes fraction',
+            frameon=False, box_alignment=(1, 1)
+        )
+
+        ax.add_artist(ab)
+
+    except Exception as e:
+        print(f"Could not load project logo: {e}")
+
+
+
 def plot_nba_player_shot_chart_data_v2(ax, data, player):
     # Transform shot data (hexes stay unchanged)
     OFFSET = 512
@@ -1292,6 +1334,7 @@ def create_shot_average_and_shot_frequency_legend(boundaries, cmap, fig):
     max_radius = 0.2
     spacing = 0.81
     y_start = 3.5
+    x_start = 0
 
     for i, label in enumerate(labels):
         radius = min_radius + (max_radius - min_radius) * (i / (color_steps - 1))
