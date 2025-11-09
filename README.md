@@ -14,7 +14,8 @@ Follow the project on X - https://x.com/postgamestats
 ## Technology Stack  
 - **Backend**: Python Flask  
 - **API**: RESTful architecture for seamless integration  
-- **Data Processing**: Powered by Pandas for efficient manipulation and analysis  
+- **Data Processing**: Powered by Pandas for efficient manipulation and analysis
+- **Database**: Powered by SQLite  
 
 ## Usage  
 1. Clone the repository:  
